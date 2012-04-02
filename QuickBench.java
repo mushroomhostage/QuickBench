@@ -68,10 +68,27 @@ import org.bukkit.craftbukkit.inventory.CraftItemStack;
 class QuickBenchListener implements Listener {
     QuickBench plugin;
 
+    final int QUICKBENCH_BLOCK_ID;
+    final byte QUICKBENCH_BLOCK_DATA;
+    final int QUICKBENCH_ITEM_ID;
+    final static Enchantment QUICKBENCH_ITEM_TAG = Enchantment.FIRE_ASPECT;
+
     public QuickBenchListener(QuickBench plugin) {
         this.plugin = plugin;
 
+        QUICKBENCH_BLOCK_ID = plugin.getConfig().getInt("quickBench.blockId", Material.LAPIS_BLOCK.getId());
+        QUICKBENCH_BLOCK_DATA = (byte)plugin.getConfig().getInt("quickBench.blockData", 1);
+        QUICKBENCH_ITEM_ID = plugin.getConfig().getInt("quickBench.itemId", Material.WORKBENCH.getId());
+
         Bukkit.getServer().getPluginManager().registerEvents(this, plugin);
+    }
+    
+    public boolean isQuickBench(Block block) {
+        return block.getTypeId() == QUICKBENCH_BLOCK_ID && block.getData() == QUICKBENCH_BLOCK_DATA;
+    }
+
+    public boolean isQuickBench(ItemStack item) {
+        return item.getTypeId() == QUICKBENCH_ITEM_ID && item.containsEnchantment(QUICKBENCH_ITEM_TAG);
     }
 
     @EventHandler(priority=EventPriority.MONITOR, ignoreCancelled=true) 
@@ -79,11 +96,20 @@ class QuickBenchListener implements Listener {
         Player player = event.getPlayer();
         Block block = event.getClickedBlock();
 
-        if (block != null 
-            && block.getTypeId() == plugin.getConfig().getInt("quickBenchId", Material.LAPIS_BLOCK.getId()) 
-            && block.getData() == plugin.getConfig().getInt("quickBenchData", 0)) { // TODO: only placed data
+        if (block != null && isQuickBench(block)) {
             plugin.log.info("clicked qb");
 
+        }
+    }
+
+
+    @EventHandler(priority=EventPriority.MONITOR, ignoreCancelled=true)
+    public void onBlockPlace(BlockPlaceEvent event) {
+        ItemStack item = event.getItemInHand();
+
+        if (isQuickBench(item)) {
+            plugin.log.info("placed qb");
+            event.getBlockPlaced().setTypeIdAndData(QUICKBENCH_BLOCK_ID, QUICKBENCH_BLOCK_DATA, true);
         }
     }
 }
