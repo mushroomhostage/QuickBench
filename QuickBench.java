@@ -109,7 +109,24 @@ class QuickBenchListener implements Listener {
 
         if (isQuickBench(item)) {
             plugin.log.info("placed qb");
+            // place quickbench item as lapis block
             event.getBlockPlaced().setTypeIdAndData(QUICKBENCH_BLOCK_ID, QUICKBENCH_BLOCK_DATA, true);
+        }
+    }
+
+    @EventHandler(priority=EventPriority.MONITOR, ignoreCancelled=true)
+    public void onBlockBreak(BlockBreakEvent event) {
+        Block block = event.getBlock();
+
+        if (block != null && isQuickBench(block)) {
+            // break tagged lapis block as quickbench item
+            ItemStack item = new ItemStack(QUICKBENCH_ITEM_ID, 1);
+            item.addUnsafeEnchantment(QUICKBENCH_ITEM_TAG, 1);
+
+            block.setType(Material.AIR);
+            block.getWorld().dropItemNaturally(block.getLocation(), item);
+
+            event.setCancelled(true);
         }
     }
 }
