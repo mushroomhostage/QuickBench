@@ -65,11 +65,34 @@ import net.minecraft.server.CraftingManager;
 import org.bukkit.craftbukkit.enchantments.CraftEnchantment;
 import org.bukkit.craftbukkit.inventory.CraftItemStack;
 
-public class QuickBench extends JavaPlugin implements Listener {
+class QuickBenchListener implements Listener {
+    QuickBench plugin;
+
+    public QuickBenchListener(QuickBench plugin) {
+        this.plugin = plugin;
+
+        Bukkit.getServer().getPluginManager().registerEvents(this, plugin);
+    }
+
+    @EventHandler(priority=EventPriority.MONITOR, ignoreCancelled=true) 
+    public void onPlayerInteract(PlayerInteractEvent event) {
+        Player player = event.getPlayer();
+        Block block = event.getClickedBlock();
+
+        if (block != null 
+            && block.getTypeId() == plugin.getConfig().getInt("quickBenchId", Material.LAPIS_BLOCK.getId()) 
+            && block.getData() == plugin.getConfig().getInt("quickBenchData", 0)) { // TODO: only placed data
+            plugin.log.info("clicked qb");
+
+        }
+    }
+}
+
+public class QuickBench extends JavaPlugin {
     Logger log = Logger.getLogger("Minecraft");
 
-
     public void onEnable() {
+        new QuickBenchListener(this);
     }
 
     public void onDisable() {
