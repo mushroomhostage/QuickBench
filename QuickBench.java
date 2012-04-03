@@ -27,13 +27,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 package me.exphc.QuickBench;
 
-import java.util.Collections;
-import java.util.List;
-import java.util.ArrayList;
-import java.util.Map;
-import java.util.HashMap;
-import java.util.UUID;
-import java.util.Iterator;
+import java.util.*;
 import java.util.logging.Logger;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.Formatter;
@@ -122,17 +116,63 @@ class QuickBenchListener implements Listener {
         if (block != null && isQuickBench(block)) {
             plugin.log.info("clicked qb");
 
-            int rows = 10;
+            List<ItemStack> outputs = precraft(player.getInventory().getContents());
 
             final int ROW_SIZE = 9;
+            int rows = (int)Math.max(1, Math.ceil(outputs.size() * 1.0 / ROW_SIZE));
+
             // Note: >54 still shows dividing line on client, but can interact
             Inventory inventory = Bukkit.createInventory(player, ROW_SIZE * rows, "QuickBench");
+
+            for (ItemStack output: outputs) {
+                inventory.addItem(output);
+            }
 
             player.openInventory(inventory);
         }
     }
 
-    /* not in 1.2.3-R0.1 :(
+    public List<ItemStack> precraft(ItemStack[] inputs) {
+        List<ItemStack> outputs = new ArrayList<ItemStack>();
+
+        // Set of all available input items
+        Set<ItemStack> inputsSet = new HashSet<ItemStack>();
+
+        for (ItemStack input: inputs) {
+            inputsSet.add(input);
+        }
+
+
+        Iterator<Recipe> recipes = Bukkit.getServer().recipeIterator();
+
+        RECIPE: while(recipes.hasNext()) {
+            Recipe recipe = recipes.next();
+
+            //plugin.log.info("recipe "+recipe);
+
+            if (recipe instanceof ShapedRecipe) {
+                Collection<ItemStack> recipeInputs = ((ShapedRecipe)recipe).getIngredientMap().values();
+
+                for (ItemStack recipeInput: recipeInputs) {
+                    if (inputsSet.contains(recipeInput)) {
+                        //plugin.log.info("have "+recipeInput);
+                    } else {
+                        //plugin.log.info("missing "+recipeInput);
+                        continue RECIPE;
+                    }
+                }
+                // we can craft it!
+
+                outputs.add(recipe.getResult());
+            }
+            // TODO: shapeless
+        }
+
+        return outputs;
+    }
+
+    // not in 1.2.4-R1.0 :(
+    /*
     @EventHandler(priority=EventPriority.MONITOR, ignoreCancelled=true)
     public void onInventoryClick(InventoryClickEvent event) {
         plugin.log.info("click "+event);
