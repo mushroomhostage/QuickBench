@@ -80,9 +80,12 @@ class QuickBenchListener implements Listener {
         QUICKBENCH_BLOCK_DATA = (byte)plugin.getConfig().getInt("quickBench.blockData", 1);
         QUICKBENCH_ITEM_ID = plugin.getConfig().getInt("quickBench.itemId", Material.WORKBENCH.getId());
 
+        loadRecipe();
+
         Bukkit.getServer().getPluginManager().registerEvents(this, plugin);
     }
-    
+
+   
     public boolean isQuickBench(Block block) {
         return block.getTypeId() == QUICKBENCH_BLOCK_ID && block.getData() == QUICKBENCH_BLOCK_DATA;
     }
@@ -91,6 +94,26 @@ class QuickBenchListener implements Listener {
         return item.getTypeId() == QUICKBENCH_ITEM_ID && item.containsEnchantment(QUICKBENCH_ITEM_TAG);
     }
 
+    public ItemStack getQuickBenchItem() {
+        ItemStack item = new ItemStack(QUICKBENCH_ITEM_ID, 1);
+        item.addUnsafeEnchantment(QUICKBENCH_ITEM_TAG, 1);
+
+        return item;
+    }
+
+    private void loadRecipe() {
+        if (!plugin.getConfig().getBoolean("enableCrafting", true)) {
+            return;
+        }
+
+        ShapelessRecipe recipe = new ShapelessRecipe(getQuickBenchItem());
+
+        recipe.addIngredient(1, Material.WORKBENCH);
+        recipe.addIngredient(1, Material.BOOK);
+
+        Bukkit.addRecipe(recipe);
+    }
+ 
     @EventHandler(priority=EventPriority.MONITOR, ignoreCancelled=true) 
     public void onPlayerInteract(PlayerInteractEvent event) {
         Player player = event.getPlayer();
@@ -99,8 +122,24 @@ class QuickBenchListener implements Listener {
         if (block != null && isQuickBench(block)) {
             plugin.log.info("clicked qb");
 
+            int rows = 10;
+
+            final int ROW_SIZE = 9;
+            // Note: >54 still shows dividing line on client, but can interact
+            Inventory inventory = Bukkit.createInventory(player, ROW_SIZE * rows, "QuickBench");
+
+            player.openInventory(inventory);
         }
     }
+
+    /* not in 1.2.3-R0.1 :(
+    @EventHandler(priority=EventPriority.MONITOR, ignoreCancelled=true)
+    public void onInventoryClick(InventoryClickEvent event) {
+        plugin.log.info("click "+event);
+        plugin.log.info("cur item = "+event.getCurrentItem());
+        plugin.log.info("shift = "+event.isShiftClick());
+    }
+    */
 
 
     @EventHandler(priority=EventPriority.MONITOR, ignoreCancelled=true)
@@ -120,8 +159,7 @@ class QuickBenchListener implements Listener {
 
         if (block != null && isQuickBench(block)) {
             // break tagged lapis block as quickbench item
-            ItemStack item = new ItemStack(QUICKBENCH_ITEM_ID, 1);
-            item.addUnsafeEnchantment(QUICKBENCH_ITEM_TAG, 1);
+            ItemStack item = getQuickBenchItem();
 
             block.setType(Material.AIR);
             block.getWorld().dropItemNaturally(block.getLocation(), item);
