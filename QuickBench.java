@@ -218,6 +218,13 @@ class QuickBenchListener implements Listener {
         plugin.log.info("click "+event);
         plugin.log.info("cur item = "+item);
         plugin.log.info("shift = "+event.isShiftClick());
+        plugin.log.info("raw slot = "+event.getRawSlot());
+
+        if (event.getRawSlot() >= view.getTopInventory().getSize()) {
+            // clicked player inventory (bottom), let do anything
+            return;
+        }
+
 
         // add to player inventory when clicked
         HashMap<Integer,ItemStack> overflow = view.getBottomInventory().addItem(item);
