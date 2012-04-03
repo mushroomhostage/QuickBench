@@ -141,12 +141,8 @@ class QuickBenchListener implements Listener {
         RECIPE: while(recipes.hasNext()) {
             Recipe recipe = recipes.next();
 
-            if (recipe instanceof ShapedRecipe || recipe instanceof ShapelessRecipe) {
-                Collection<ItemStack> recipeInputs = (recipe instanceof ShapedRecipe) ?  ((ShapedRecipe)recipe).getIngredientMap().values() : ((ShapelessRecipe)recipe).getIngredientList();
-
-                if (canCraft(inputs, recipeInputs)) {
-                    outputs.add(recipe.getResult());
-                }
+            if (canCraft(inputs, recipe)) {
+                outputs.add(recipe.getResult());
             }
         }
 
@@ -193,12 +189,24 @@ class QuickBenchListener implements Listener {
         return count <= 0;
     }
 
+    Collection<ItemStack> getRecipeInputs(Recipe recipe) {
+        return (recipe instanceof ShapedRecipe) ?  ((ShapedRecipe)recipe).getIngredientMap().values() : ((ShapelessRecipe)recipe).getIngredientList();
+    }
+
     /** Get whether array of item stacks has all of the recipe inputs. */
-    public boolean canCraft(ItemStack[] inputs, Collection<ItemStack> recipeInputs) {
+    public boolean canCraft(ItemStack[] inputs, Recipe recipe) {
+        if (!(recipe instanceof ShapedRecipe || recipe instanceof ShapelessRecipe)) {
+            // other recipes (furnace, etc.) not handled here
+            return false;
+        }
+        
+        Collection<ItemStack> recipeInputs = getRecipeInputs(recipe);
+
         for (ItemStack recipeInput: recipeInputs) {
             if (!haveItems(inputs, recipeInput)) {
                 return false;
             } else {
+                // so far so good
             }
         }
         return true;
@@ -218,6 +226,7 @@ class QuickBenchListener implements Listener {
         plugin.log.info("click "+event);
         plugin.log.info("cur item = "+item);
         plugin.log.info("shift = "+event.isShiftClick());
+        // TODO: shift-click to craft all
         plugin.log.info("raw slot = "+event.getRawSlot());
 
         if (event.getRawSlot() >= view.getTopInventory().getSize()) {
@@ -225,6 +234,19 @@ class QuickBenchListener implements Listener {
             return;
         }
 
+        // TODO: craft
+        List<Recipe> recipes = Bukkit.getServer().getRecipesFor(item);
+        for (Recipe recipe: recipes) {
+            if (canCraft(player.getInventory().getContents(), recipe)) {
+                plugin.log.info(" craft "+recipe);
+
+                Collection<ItemStack> inputs = getRecipeInputs(recipe);
+                // TODO: remove items from recipe from player inventory!
+                plugin.log.info(" TODO: remove "+inputs);
+                break;
+            }
+        }
+        // TODO: if none matched, fail!
 
         // add to player inventory when clicked
         HashMap<Integer,ItemStack> overflow = view.getBottomInventory().addItem(item);
@@ -233,12 +255,11 @@ class QuickBenchListener implements Listener {
         // remove clicked item
         //event.setCursor(null);
         view.setItem(event.getRawSlot(), null);
-        
-
-        // TODO: craft
+       
+        // TODO: repopulate inventory view, with new items? maybe too distracting
+        // TODO: at least should re-add items in same places if can still craft
 
         // don't let pick up
-        // TODO: allow from player inventory
         event.setResult(Event.Result.DENY);
     }
 
