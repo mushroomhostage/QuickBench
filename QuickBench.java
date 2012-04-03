@@ -132,14 +132,19 @@ class QuickBenchListener implements Listener {
         }
     }
 
-    public List<ItemStack> precraft(ItemStack[] inputs) {
+    public List<ItemStack> precraft(ItemStack[] inputsArray) {
         List<ItemStack> outputs = new ArrayList<ItemStack>();
 
         // Set of all available input items
-        Set<ItemStack> inputsSet = new HashSet<ItemStack>();
+        Collection<ItemStack> inputs = new HashSet<ItemStack>();
 
-        for (ItemStack input: inputs) {
-            inputsSet.add(input);
+        for (ItemStack input: inputsArray) {
+            if (input == null) {
+                continue;
+            }
+
+            // strip quantity and enchantments, so can do equality matching on type and data only
+            inputs.add(new ItemStack(input.getTypeId(), 1, input.getDurability()));
         }
 
 
@@ -150,25 +155,31 @@ class QuickBenchListener implements Listener {
 
             //plugin.log.info("recipe "+recipe);
 
-            if (recipe instanceof ShapedRecipe) {
-                Collection<ItemStack> recipeInputs = ((ShapedRecipe)recipe).getIngredientMap().values();
+            if (recipe instanceof ShapedRecipe || recipe instanceof ShapelessRecipe) {
+                Collection<ItemStack> recipeInputs = (recipe instanceof ShapedRecipe) ?  ((ShapedRecipe)recipe).getIngredientMap().values() : ((ShapelessRecipe)recipe).getIngredientList();
 
-                for (ItemStack recipeInput: recipeInputs) {
-                    if (inputsSet.contains(recipeInput)) {
-                        //plugin.log.info("have "+recipeInput);
-                    } else {
-                        //plugin.log.info("missing "+recipeInput);
-                        continue RECIPE;
-                    }
+                if (canCraft(inputs, recipeInputs)) {
+                    outputs.add(recipe.getResult());
+                    plugin.log.info("adding "+recipe.getResult());
                 }
-                // we can craft it!
 
-                outputs.add(recipe.getResult());
             }
-            // TODO: shapeless
         }
 
         return outputs;
+    }
+
+    // TODO: this is wrong, it needs to check quantity, too!
+    public boolean canCraft(Collection<ItemStack> inputs, Collection<ItemStack> recipeInputs) {
+        for (ItemStack recipeInput: recipeInputs) {
+            if (inputs.contains(recipeInput)) {
+                plugin.log.info("have "+recipeInput);
+            } else {
+                plugin.log.info("missing "+recipeInput);
+                return false;
+            }
+        }
+        return true;
     }
 
     // not in 1.2.4-R1.0 :(
