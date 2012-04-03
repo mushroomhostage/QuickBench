@@ -42,6 +42,7 @@ import org.bukkit.event.*;
 import org.bukkit.event.block.*;
 import org.bukkit.event.player.*;
 import org.bukkit.event.entity.*;
+import org.bukkit.event.inventory.*;
 import org.bukkit.Material.*;
 import org.bukkit.material.*;
 import org.bukkit.block.*;
@@ -66,6 +67,7 @@ class QuickBenchListener implements Listener {
     final byte QUICKBENCH_BLOCK_DATA;
     final int QUICKBENCH_ITEM_ID;
     final static Enchantment QUICKBENCH_ITEM_TAG = Enchantment.FIRE_ASPECT;
+    final String QUICKBENCH_TITLE;
 
     public QuickBenchListener(QuickBench plugin) {
         this.plugin = plugin;
@@ -73,6 +75,7 @@ class QuickBenchListener implements Listener {
         QUICKBENCH_BLOCK_ID = plugin.getConfig().getInt("quickBench.blockId", Material.LAPIS_BLOCK.getId());
         QUICKBENCH_BLOCK_DATA = (byte)plugin.getConfig().getInt("quickBench.blockData", 1);
         QUICKBENCH_ITEM_ID = plugin.getConfig().getInt("quickBench.itemId", Material.WORKBENCH.getId());
+        QUICKBENCH_TITLE = plugin.getConfig().getString("quickBench.title", "QuickBench");
 
         loadRecipe();
 
@@ -114,15 +117,13 @@ class QuickBenchListener implements Listener {
         Block block = event.getClickedBlock();
 
         if (block != null && isQuickBench(block)) {
-            plugin.log.info("clicked qb");
-
             List<ItemStack> outputs = precraft(player.getInventory().getContents());
 
             final int ROW_SIZE = 9;
             int rows = (int)Math.max(1, Math.ceil(outputs.size() * 1.0 / ROW_SIZE));
 
             // Note: >54 still shows dividing line on client, but can interact
-            Inventory inventory = Bukkit.createInventory(player, ROW_SIZE * rows, "QuickBench");
+            Inventory inventory = Bukkit.createInventory(player, ROW_SIZE * rows, QUICKBENCH_TITLE);
 
             for (ItemStack output: outputs) {
                 inventory.addItem(output);
@@ -140,16 +141,12 @@ class QuickBenchListener implements Listener {
         RECIPE: while(recipes.hasNext()) {
             Recipe recipe = recipes.next();
 
-            //plugin.log.info("recipe "+recipe);
-
             if (recipe instanceof ShapedRecipe || recipe instanceof ShapelessRecipe) {
                 Collection<ItemStack> recipeInputs = (recipe instanceof ShapedRecipe) ?  ((ShapedRecipe)recipe).getIngredientMap().values() : ((ShapelessRecipe)recipe).getIngredientList();
 
                 if (canCraft(inputs, recipeInputs)) {
                     outputs.add(recipe.getResult());
-                    plugin.log.info("adding "+recipe.getResult());
                 }
-
             }
         }
 
@@ -200,37 +197,74 @@ class QuickBenchListener implements Listener {
     public boolean canCraft(ItemStack[] inputs, Collection<ItemStack> recipeInputs) {
         for (ItemStack recipeInput: recipeInputs) {
             if (!haveItems(inputs, recipeInput)) {
-                //plugin.log.info("missing "+recipeInput);
                 return false;
             } else {
-                //plugin.log.info("have "+recipeInput);
             }
         }
         return true;
     }
 
-    // not in 1.2.4-R1.0 :(
-    /*
     @EventHandler(priority=EventPriority.MONITOR, ignoreCancelled=true)
     public void onInventoryClick(InventoryClickEvent event) {
+        InventoryView view = event.getView();
+
+        if (!view.getTitle().equals(QUICKBENCH_TITLE)) {
+            return;
+        }
+
+        HumanEntity player = event.getWhoClicked();
+        ItemStack item = event.getCurrentItem();
+
         plugin.log.info("click "+event);
-        plugin.log.info("cur item = "+event.getCurrentItem());
+        plugin.log.info("cur item = "+item);
         plugin.log.info("shift = "+event.isShiftClick());
+
+        // add to player inventory when clicked
+        HashMap<Integer,ItemStack> overflow = view.getBottomInventory().addItem(item);
+        // TODO: don't add what didn't fit
+
+        // remove clicked item
+        //event.setCursor(null);
+        view.setItem(event.getRawSlot(), null);
+        
+
+        // TODO: craft
+
+        // don't let pick up
+        // TODO: allow from player inventory
+        event.setResult(Event.Result.DENY);
     }
-    */
 
+    @EventHandler(priority=EventPriority.MONITOR, ignoreCancelled=true) 
+    public void onInventoryClose(InventoryCloseEvent event) {
+        InventoryView view = event.getView();
 
+        if (!view.getTitle().equals(QUICKBENCH_TITLE)) {
+            // not for us
+            return;
+        }
+
+        Inventory playerInventory = view.getTopInventory();
+
+        Inventory benchInventory = view.getBottomInventory();
+
+        // TODO: remove from player inventory what items they took!
+    }
+
+    // QuickBench block <-> item
+
+    // Place item -> block
     @EventHandler(priority=EventPriority.MONITOR, ignoreCancelled=true)
     public void onBlockPlace(BlockPlaceEvent event) {
         ItemStack item = event.getItemInHand();
 
         if (isQuickBench(item)) {
-            plugin.log.info("placed qb");
             // place quickbench item as lapis block
             event.getBlockPlaced().setTypeIdAndData(QUICKBENCH_BLOCK_ID, QUICKBENCH_BLOCK_DATA, true);
         }
     }
 
+    // Break block -> item
     @EventHandler(priority=EventPriority.MONITOR, ignoreCancelled=true)
     public void onBlockBreak(BlockBreakEvent event) {
         Block block = event.getBlock();
