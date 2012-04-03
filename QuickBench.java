@@ -132,21 +132,8 @@ class QuickBenchListener implements Listener {
         }
     }
 
-    public List<ItemStack> precraft(ItemStack[] inputsArray) {
+    public List<ItemStack> precraft(ItemStack[] inputs) {
         List<ItemStack> outputs = new ArrayList<ItemStack>();
-
-        // Set of all available input items
-        Collection<ItemStack> inputs = new HashSet<ItemStack>();
-
-        for (ItemStack input: inputsArray) {
-            if (input == null) {
-                continue;
-            }
-
-            // strip quantity and enchantments, so can do equality matching on type and data only
-            inputs.add(new ItemStack(input.getTypeId(), 1, input.getDurability()));
-        }
-
 
         Iterator<Recipe> recipes = Bukkit.getServer().recipeIterator();
 
@@ -169,14 +156,54 @@ class QuickBenchListener implements Listener {
         return outputs;
     }
 
-    // TODO: this is wrong, it needs to check quantity, too!
-    public boolean canCraft(Collection<ItemStack> inputs, Collection<ItemStack> recipeInputs) {
+    /** Get whether the item stack is contained within an array of item stacks. */
+    public boolean haveItems(ItemStack[] inputs, ItemStack check) {
+        if (check == null) {    
+            // everyone has nothing
+            return true;
+        }
+
+        int type = check.getTypeId();
+        short damage = check.getDurability();
+        int count = check.getAmount();
+
+        for (ItemStack input: inputs) {
+            if (input == null) {
+                continue;
+            }
+
+            // match types and damage
+            if (input.getTypeId() != type) {
+                continue;
+            }
+
+            if (damage != -1 && damage != input.getDurability()) {
+                continue;
+            }
+
+            // ignore enchantments
+
+            // consume what we need from what they have
+            if (input.getAmount() >= count) {
+                count -= input.getAmount();
+                if (count <= 0) {
+                    break;
+                }
+            }
+        }
+
+        // if matched everything, and then some
+        return count <= 0;
+    }
+
+    /** Get whether array of item stacks has all of the recipe inputs. */
+    public boolean canCraft(ItemStack[] inputs, Collection<ItemStack> recipeInputs) {
         for (ItemStack recipeInput: recipeInputs) {
-            if (inputs.contains(recipeInput)) {
-                plugin.log.info("have "+recipeInput);
-            } else {
-                plugin.log.info("missing "+recipeInput);
+            if (!haveItems(inputs, recipeInput)) {
+                //plugin.log.info("missing "+recipeInput);
                 return false;
+            } else {
+                //plugin.log.info("have "+recipeInput);
             }
         }
         return true;
