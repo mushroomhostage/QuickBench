@@ -194,7 +194,7 @@ class QuickBenchListener implements Listener {
     }
 
     /** Get whether array of item stacks has all of the recipe inputs. */
-    public boolean canCraft(ItemStack[] inputs, Recipe recipe) {
+    public boolean canCraft(final ItemStack[] inputs, Recipe recipe) {
         if (!(recipe instanceof ShapedRecipe || recipe instanceof ShapelessRecipe)) {
             // other recipes (furnace, etc.) not handled here
             return false;
@@ -202,9 +202,23 @@ class QuickBenchListener implements Listener {
         
         Collection<ItemStack> recipeInputs = getRecipeInputs(recipe);
 
+        // Clone so don't modify original
+        ItemStack[] accum = new ItemStack[inputs.length];
+        for (int i = 0; i < inputs.length; i += 1) {
+            if (inputs[i] != null) {
+                accum[i] = inputs[i].clone();
+            }
+        }
+
+        // Remove items as we go, ensuring we can successfully remove everything
         for (ItemStack recipeInput: recipeInputs) {
-            // TODO: we need to count..
-            if (!haveItems(inputs, recipeInput)) {
+            if (recipeInput == null) {
+                continue;
+            }
+
+            int missing = takeItems(accum, recipeInput);
+
+            if (missing != 0) {
                 return false;
             } else {
                 // so far so good
