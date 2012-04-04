@@ -120,7 +120,7 @@ class QuickBenchListener implements Listener {
             List<ItemStack> outputs = precraft(player.getInventory().getContents());
 
             final int ROW_SIZE = 9;
-            int rows = (int)Math.ceil(outputs.size() * 1.0 / ROW_SIZE);
+            int rows = (int)Math.max(plugin.getConfig().getInt("quickBench.minSizeRows", 0), Math.ceil(outputs.size() * 1.0 / ROW_SIZE));
 
             // Note: >54 still shows dividing line on client, but can interact
             Inventory inventory = Bukkit.createInventory(player, ROW_SIZE * rows, QUICKBENCH_TITLE);
@@ -299,10 +299,9 @@ class QuickBenchListener implements Listener {
             return;
         }
 
-        if (item == null) {
-            // dropped item (raw slot -999)
+        if (item == null || item.getType() == Material.AIR) {
+            // dropped item (raw slot -999) or empty slot
             event.setResult(Event.Result.DENY);
-            // TODO: allow?
             return;
         }
 
