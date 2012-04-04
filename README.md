@@ -64,3 +64,5 @@ Some unusual recipes or those added by mods may not behave as expected; please r
 
 * [Crafting Table II](http://www.minecraftforum.net/topic/856538-11-crafting-table-ii-v162-310112/) - a client/server mod which heavily inspired QuickBench
 
+***[Fork me on GitHub](https://github.com/mushroomhostage/QuickBench)***
+
