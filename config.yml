@@ -1,0 +1,9 @@
+verbose: false
+quickBench:
+    blockId: 22
+    blockData: 1
+    itemId: 58
+    title: QuickBench
+    enableCrafting: true
+    minSizeRows: 0
+

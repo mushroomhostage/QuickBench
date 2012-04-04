@@ -99,16 +99,14 @@ class QuickBenchListener implements Listener {
     }
 
     private void loadRecipe() {
-        if (!plugin.getConfig().getBoolean("enableCrafting", true)) {
-            return;
+        if (plugin.getConfig().getBoolean("quickBench.enableCrafting", true)) {
+            ShapelessRecipe recipe = new ShapelessRecipe(getQuickBenchItem());
+
+            recipe.addIngredient(1, Material.WORKBENCH);
+            recipe.addIngredient(1, Material.BOOK);
+
+            Bukkit.addRecipe(recipe);
         }
-
-        ShapelessRecipe recipe = new ShapelessRecipe(getQuickBenchItem());
-
-        recipe.addIngredient(1, Material.WORKBENCH);
-        recipe.addIngredient(1, Material.BOOK);
-
-        Bukkit.addRecipe(recipe);
     }
  
     @EventHandler(priority=EventPriority.MONITOR, ignoreCancelled=true) 
@@ -138,13 +136,30 @@ class QuickBenchListener implements Listener {
 
         Iterator<Recipe> recipes = Bukkit.getServer().recipeIterator();
 
+
+        int recipeCount = 0;
+
+        // TODO: why does this miss some modded recipes?
         RECIPE: while(recipes.hasNext()) {
             Recipe recipe = recipes.next();
 
+            if (recipe == null) {
+                // null recipes, it happens!
+                continue;
+            }
+
+            recipeCount += 1;
+
+            ItemStack result = recipe.getResult();
+            
+            plugin.log("recipe " + recipeCount + ". output = " + result);
+
             if (canCraft(inputs, recipe)) {
-                outputs.add(recipe.getResult());
+                outputs.add(result);
             }
         }
+
+        plugin.log("Total recipes: " + recipeCount + ", craftable: " + outputs.size());
 
         return outputs;
     }
@@ -215,6 +230,8 @@ class QuickBenchListener implements Listener {
         
         Collection<ItemStack> recipeInputs = getRecipeInputs(recipe);
 
+        plugin.log("- recipe inputs: " + recipeInputs);
+
         // Clone so don't modify original
         ItemStack[] accum = cloneItemStacks(inputs);
 
@@ -227,11 +244,13 @@ class QuickBenchListener implements Listener {
             int missing = takeItems(accum, recipeInput);
 
             if (missing != 0) {
+                plugin.log(" - can't craft, missing "+missing+" of "+recipeInput);
                 return false;
             } else {
                 // so far so good
             }
         }
+        plugin.log(" + craftable with "+inputs);
         return true;
     }
 
@@ -309,8 +328,14 @@ class QuickBenchListener implements Listener {
         ItemStack[] playerContents = playerInventory.getContents();
 
         // Remove crafting inputs
-        boolean crafted = false;
         List<Recipe> recipes = Bukkit.getServer().getRecipesFor(item);
+        if (recipes == null) {
+            plugin.log("No recipes for "+item);
+            event.setResult(Event.Result.DENY);
+            return;
+        }
+
+        boolean crafted = false;
         for (Recipe recipe: recipes) {
             if (canCraft(playerContents, recipe)) {
 
@@ -390,8 +415,6 @@ class QuickBenchListener implements Listener {
         Inventory playerInventory = view.getTopInventory();
 
         Inventory benchInventory = view.getBottomInventory();
-
-        // TODO: remove from player inventory what items they took!
     }
 
     // QuickBench block <-> item
@@ -428,6 +451,10 @@ public class QuickBench extends JavaPlugin {
     Logger log = Logger.getLogger("Minecraft");
 
     public void onEnable() {
+        getConfig().options().copyDefaults(true);
+        saveConfig();
+        reloadConfig();
+
         new QuickBenchListener(this);
     }
 
