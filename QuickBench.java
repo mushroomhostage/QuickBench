@@ -203,6 +203,7 @@ class QuickBenchListener implements Listener {
         Collection<ItemStack> recipeInputs = getRecipeInputs(recipe);
 
         for (ItemStack recipeInput: recipeInputs) {
+            // TODO: we need to count..
             if (!haveItems(inputs, recipeInput)) {
                 return false;
             } else {
@@ -281,24 +282,25 @@ class QuickBenchListener implements Listener {
         }
 
         Inventory playerInventory = view.getBottomInventory();
+        ItemStack[] playerContents = playerInventory.getContents();
 
         // Remove crafting inputs
         boolean crafted = false;
         List<Recipe> recipes = Bukkit.getServer().getRecipesFor(item);
         for (Recipe recipe: recipes) {
-            if (canCraft(playerInventory.getContents(), recipe)) {
+            if (canCraft(playerContents, recipe)) {
 
                 Collection<ItemStack> inputs = getRecipeInputs(recipe);
 
                 plugin.log.info(" craft "+recipe+" inputs="+inputs);
 
-                // TODO: remove items from recipe from player inventory!
+                // Remove items from recipe from player inventory
                 for (ItemStack input: inputs) {
                     if (input == null) {
                         continue;
                     }
 
-                    int missing = takeItems(playerInventory.getContents(), input);
+                    int missing = takeItems(playerContents, input);
 
                     if (missing != 0) {
                         plugin.log.info("Failed to remove crafting inputs "+inputs+" for player "+player.getName()+" crafting "+item+", missing "+missing);
@@ -306,6 +308,8 @@ class QuickBenchListener implements Listener {
                         return;
                     }
                 }
+
+                playerInventory.setContents(playerContents);
                 crafted = true;
                 break;
             }
