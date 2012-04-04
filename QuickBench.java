@@ -352,6 +352,13 @@ class QuickBenchListener implements Listener {
 
         // Populate with new items, either adding (if have new crafting inputs) or removing (if took up all)
         List<ItemStack> newItems = precraft(playerContents);
+
+        if (newItems.size() > view.getTopInventory().getSize()) {
+            // TODO: improve.. but can't resize window? close and reopen
+            ((Player)player).sendMessage("More crafting outputs available than shown here - reopen to see full list!");
+            newItems = newItems.subList(0, view.getTopInventory().getSize());
+        }
+
         view.getTopInventory().setContents(itemStackArray(newItems));
 
         // don't let pick up
