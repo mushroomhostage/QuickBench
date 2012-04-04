@@ -234,19 +234,47 @@ class QuickBenchListener implements Listener {
             return;
         }
 
-        // TODO: craft
+        if (item == null) {
+            // dropped item (raw slot -999)
+            event.setResult(Event.Result.DENY);
+            // TODO: allow?
+            return;
+        }
+
+        Inventory playerInventory = view.getBottomInventory();
+
+        // Remove crafting inputs
+        boolean crafted = false;
         List<Recipe> recipes = Bukkit.getServer().getRecipesFor(item);
         for (Recipe recipe: recipes) {
-            if (canCraft(player.getInventory().getContents(), recipe)) {
+            if (canCraft(playerInventory.getContents(), recipe)) {
                 plugin.log.info(" craft "+recipe);
 
                 Collection<ItemStack> inputs = getRecipeInputs(recipe);
                 // TODO: remove items from recipe from player inventory!
-                plugin.log.info(" TODO: remove "+inputs);
+                for (ItemStack input: inputs) {
+                    if (input == null) {
+                        continue;
+                    }
+
+                    HashMap<Integer,ItemStack> missing = playerInventory.removeItem(input);
+
+                    if (missing.size() != 0) {
+                        plugin.log.info("Failed to remove crafting inputs "+inputs+" for player "+player.getName()+" crafting "+item+", missing "+missing);
+                        event.setResult(Event.Result.DENY);
+                        return;
+                    }
+                }
+                crafted = true;
                 break;
             }
         }
-        // TODO: if none matched, fail!
+        if (!crafted) {
+            plugin.log.info("Failed to find matching recipe from player "+player.getName()+" for crafting "+item);
+            // don't let pick up
+            event.setResult(Event.Result.DENY);
+            return;
+        }
 
         // add to player inventory when clicked
         HashMap<Integer,ItemStack> overflow = view.getBottomInventory().addItem(item);
