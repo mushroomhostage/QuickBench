@@ -193,6 +193,19 @@ class QuickBenchListener implements Listener {
         return (recipe instanceof ShapedRecipe) ?  ((ShapedRecipe)recipe).getIngredientMap().values() : ((ShapelessRecipe)recipe).getIngredientList();
     }
 
+    public ItemStack[] cloneItemStacks(ItemStack[] original) {
+        // TODO: better way to deep copy array?
+        ItemStack[] copy = new ItemStack[original.length];
+        for (int i = 0; i < original.length; i += 1) {
+            if (original[i] != null) {
+                copy[i] = original[i].clone();
+            }
+        }
+
+        return copy;
+    }
+
+
     /** Get whether array of item stacks has all of the recipe inputs. */
     public boolean canCraft(final ItemStack[] inputs, Recipe recipe) {
         if (!(recipe instanceof ShapedRecipe || recipe instanceof ShapelessRecipe)) {
@@ -203,12 +216,7 @@ class QuickBenchListener implements Listener {
         Collection<ItemStack> recipeInputs = getRecipeInputs(recipe);
 
         // Clone so don't modify original
-        ItemStack[] accum = new ItemStack[inputs.length];
-        for (int i = 0; i < inputs.length; i += 1) {
-            if (inputs[i] != null) {
-                accum[i] = inputs[i].clone();
-            }
-        }
+        ItemStack[] accum = cloneItemStacks(inputs);
 
         // Remove items as we go, ensuring we can successfully remove everything
         for (ItemStack recipeInput: recipeInputs) {
@@ -266,6 +274,7 @@ class QuickBenchListener implements Listener {
 
         return remaining;
     }
+
     @EventHandler(priority=EventPriority.MONITOR, ignoreCancelled=true)
     public void onInventoryClick(InventoryClickEvent event) {
         InventoryView view = event.getView();
@@ -274,13 +283,15 @@ class QuickBenchListener implements Listener {
             return;
         }
 
+        // Click to craft
+
         HumanEntity player = event.getWhoClicked();
         ItemStack item = event.getCurrentItem();
 
         plugin.log.info("click "+event);
         plugin.log.info("cur item = "+item);
         plugin.log.info("shift = "+event.isShiftClick());
-        // TODO: shift-click to craft all
+        // TODO: shift-click to craft all?
         plugin.log.info("raw slot = "+event.getRawSlot());
 
         if (event.getRawSlot() >= view.getTopInventory().getSize()) {
@@ -339,16 +350,27 @@ class QuickBenchListener implements Listener {
         HashMap<Integer,ItemStack> overflow = view.getBottomInventory().addItem(item);
         // TODO: don't add what didn't fit
 
-        // remove clicked item
-        //event.setCursor(null);
-        view.setItem(event.getRawSlot(), null);
-       
-        // TODO: repopulate inventory view, with new items? maybe too distracting
-        // TODO: at least should re-add items in same places if can still craft
+        // Populate with new items, either adding (if have new crafting inputs) or removing (if took up all)
+        List<ItemStack> newItems = precraft(playerContents);
+        view.getTopInventory().setContents(itemStackArray(newItems));
 
         // don't let pick up
         event.setResult(Event.Result.DENY);
     }
+
+    public ItemStack[] itemStackArray(List<ItemStack> list) {
+        ItemStack[] array = new ItemStack[list.size()];
+
+        // TODO: list.toArray()? returns Object[]
+        int i = 0;
+        for (ItemStack item: list) {
+            array[i] = list.get(i);
+            i += 1;
+        }
+
+        return array;
+    }
+
 
     @EventHandler(priority=EventPriority.MONITOR, ignoreCancelled=true) 
     public void onInventoryClose(InventoryCloseEvent event) {
