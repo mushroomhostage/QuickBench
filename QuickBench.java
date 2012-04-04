@@ -25,7 +25,7 @@ ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-package me.exphc.QuickBench;
+package com.exphc.QuickBench;
 
 import java.util.*;
 import java.util.logging.Logger;
@@ -225,6 +225,8 @@ class QuickBenchListener implements Listener {
     public boolean canCraft(final ItemStack[] inputs, Recipe recipe) {
         if (!(recipe instanceof ShapedRecipe || recipe instanceof ShapelessRecipe)) {
             // other recipes (furnace, etc.) not handled here
+            // TODO: https://github.com/perky/CraftingTableII_Server/blob/master/net/minecraft/src/mod_Clevercraft.java
+            // ic2.common.AdvRecipe, ic2.common.AdvShapelessRecipe
             return false;
         }
         

@@ -3,8 +3,10 @@ QuickBench - crafting without recipes
 Features:
 
 * No clients mods required
-* Crafting recipe for QuickBench
-* 
+* Adds a craftable and placeable QuickBench item
+* Open the QuickBench to show all craftable items
+* Click item to craft automatically
+* Eliminates need to remember recipes
 
 ## Usage
 
@@ -48,7 +50,7 @@ However, the items in the slots can still be picked up as you would expect.
 
 If there are too many craftable items, not all can be shown. Close and reopen the QuickBench or temporarily drop items as a workaround.
 
-Some unusual recipes or those added by mods may not behave as expected (reason unknown); please report any problems.
+Some unusual recipes or those added by mods may not behave as expected; please report any problems.
 
 ## See also
 
