@@ -288,11 +288,11 @@ class QuickBenchListener implements Listener {
         HumanEntity player = event.getWhoClicked();
         ItemStack item = event.getCurrentItem();
 
-        plugin.log.info("click "+event);
-        plugin.log.info("cur item = "+item);
-        plugin.log.info("shift = "+event.isShiftClick());
+        plugin.log("click "+event);
+        plugin.log("cur item = "+item);
+        plugin.log("shift = "+event.isShiftClick());
         // TODO: shift-click to craft all?
-        plugin.log.info("raw slot = "+event.getRawSlot());
+        plugin.log("raw slot = "+event.getRawSlot());
 
         if (event.getRawSlot() >= view.getTopInventory().getSize()) {
             // clicked player inventory (bottom), let do anything
@@ -316,7 +316,7 @@ class QuickBenchListener implements Listener {
 
                 Collection<ItemStack> inputs = getRecipeInputs(recipe);
 
-                plugin.log.info(" craft "+recipe+" inputs="+inputs);
+                plugin.log(" craft "+recipe+" inputs="+inputs);
 
                 // Remove items from recipe from player inventory
                 for (ItemStack input: inputs) {
@@ -327,7 +327,7 @@ class QuickBenchListener implements Listener {
                     int missing = takeItems(playerContents, input);
 
                     if (missing != 0) {
-                        plugin.log.info("Failed to remove crafting inputs "+inputs+" for player "+player.getName()+" crafting "+item+", missing "+missing);
+                        plugin.log("Failed to remove crafting inputs "+inputs+" for player "+player.getName()+" crafting "+item+", missing "+missing);
                         event.setResult(Event.Result.DENY);
                         return;
                     }
@@ -339,7 +339,7 @@ class QuickBenchListener implements Listener {
             }
         }
         if (!crafted) {
-            plugin.log.info("Failed to find matching recipe from player "+player.getName()+" for crafting "+item);
+            plugin.log("Failed to find matching recipe from player "+player.getName()+" for crafting "+item);
             // don't let pick up
             event.setResult(Event.Result.DENY);
             return;
@@ -432,6 +432,12 @@ public class QuickBench extends JavaPlugin {
     }
 
     public void onDisable() {
+    }
+
+    public void log(String message) {
+        if (getConfig().getBoolean("verbose", false)) {
+            log.info(message);
+        }
     }
 
 }
