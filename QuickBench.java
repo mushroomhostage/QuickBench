@@ -212,6 +212,45 @@ class QuickBenchListener implements Listener {
         return true;
     }
 
+    // Based on FT takeItemsOnline()
+    private static int takeItems(ItemStack[] inventory, ItemStack goners) {
+        //ItemStack[] inventory = player.getInventory().getContents();
+
+        int remaining = goners.getAmount();
+        int i = 0;
+
+        for (ItemStack slot: inventory) {
+            // matching item? (ignores tags)
+            if (slot != null && slot.getTypeId() == goners.getTypeId() &&
+                (goners.getDurability() == -1 || (slot.getDurability() == goners.getDurability()))) { 
+                if (remaining > slot.getAmount()) {
+                    remaining -= slot.getAmount();
+                    slot.setAmount(0);
+                } else if (remaining > 0) {
+                    slot.setAmount(slot.getAmount() - remaining);
+                    remaining = 0;
+                } else {
+                    slot.setAmount(0);
+                }
+
+                // TODO
+                /*
+                // If removed whole slot, need to explicitly clear it
+                // ItemStacks with amounts of 0 are interpreted as 1 (possible Bukkit bug?)
+                if (slot.getAmount() == 0) {
+                    player.getInventory().clear(i);
+                }*/
+            }
+
+            i += 1;
+
+            if (remaining == 0) {
+                break;
+            }
+        }
+
+        return remaining;
+    }
     @EventHandler(priority=EventPriority.MONITOR, ignoreCancelled=true)
     public void onInventoryClick(InventoryClickEvent event) {
         InventoryView view = event.getView();
@@ -248,18 +287,20 @@ class QuickBenchListener implements Listener {
         List<Recipe> recipes = Bukkit.getServer().getRecipesFor(item);
         for (Recipe recipe: recipes) {
             if (canCraft(playerInventory.getContents(), recipe)) {
-                plugin.log.info(" craft "+recipe);
 
                 Collection<ItemStack> inputs = getRecipeInputs(recipe);
+
+                plugin.log.info(" craft "+recipe+" inputs="+inputs);
+
                 // TODO: remove items from recipe from player inventory!
                 for (ItemStack input: inputs) {
                     if (input == null) {
                         continue;
                     }
 
-                    HashMap<Integer,ItemStack> missing = playerInventory.removeItem(input);
+                    int missing = takeItems(playerInventory.getContents(), input);
 
-                    if (missing.size() != 0) {
+                    if (missing != 0) {
                         plugin.log.info("Failed to remove crafting inputs "+inputs+" for player "+player.getName()+" crafting "+item+", missing "+missing);
                         event.setResult(Event.Result.DENY);
                         return;
