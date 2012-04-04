@@ -295,6 +295,19 @@ class QuickBenchListener implements Listener {
     }
 
     @EventHandler(priority=EventPriority.MONITOR, ignoreCancelled=true)
+    public void onInventoryClickWrapper(InventoryClickEvent event) {
+        // If something goes wrong, deny the event to try to avoid duping items
+        try {
+            onInventoryClick(event);
+        } catch (Exception e) {
+            plugin.logger.warning("onInventoryClick exception: " + e);
+
+            event.setResult(Event.Result.DENY);
+        }
+    }
+
+    // Craft on inventory click
+    // do NOT add EventHandler here
     public void onInventoryClick(InventoryClickEvent event) {
         InventoryView view = event.getView();
 
@@ -330,7 +343,7 @@ class QuickBenchListener implements Listener {
         // Remove crafting inputs
         List<Recipe> recipes = Bukkit.getServer().getRecipesFor(item);
         if (recipes == null) {
-            plugin.log("No recipes for "+item);
+            plugin.logger.warning("No recipes for "+item);
             event.setResult(Event.Result.DENY);
             return;
         }
@@ -352,7 +365,7 @@ class QuickBenchListener implements Listener {
                     int missing = takeItems(playerContents, input);
 
                     if (missing != 0) {
-                        plugin.log("Failed to remove crafting inputs "+inputs+" for player "+player.getName()+" crafting "+item+", missing "+missing);
+                        plugin.logger.warning("Failed to remove crafting inputs "+inputs+" for player "+player.getName()+" crafting "+item+", missing "+missing);
                         event.setResult(Event.Result.DENY);
                         return;
                     }
@@ -364,7 +377,7 @@ class QuickBenchListener implements Listener {
             }
         }
         if (!crafted) {
-            plugin.log("Failed to find matching recipe from player "+player.getName()+" for crafting "+item);
+            plugin.logger.warning("Failed to find matching recipe from player "+player.getName()+" for crafting "+item);
             // don't let pick up
             event.setResult(Event.Result.DENY);
             return;
@@ -448,7 +461,7 @@ class QuickBenchListener implements Listener {
 }
 
 public class QuickBench extends JavaPlugin {
-    Logger log = Logger.getLogger("Minecraft");
+    Logger logger = Logger.getLogger("Minecraft");
 
     public void onEnable() {
         getConfig().options().copyDefaults(true);
@@ -463,7 +476,7 @@ public class QuickBench extends JavaPlugin {
 
     public void log(String message) {
         if (getConfig().getBoolean("verbose", false)) {
-            log.info(message);
+            logger.info(message);
         }
     }
 
