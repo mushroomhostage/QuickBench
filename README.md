@@ -1,11 +1,15 @@
 QuickBench - crafting without recipes
 
+Tired of remembering crafting recipes? Use a QuickBench! Unlike a normal crafting table
+which operates on a crafting grid, the QuickBench shows you a list of available items,
+and you simply click to craft.
+
 Features:
 
 * No clients mods required
 * Adds a craftable and placeable QuickBench item
-* Open the QuickBench to show all craftable items
-* Click item to craft automatically
+* Open the QuickBench to show items which are craftable from your inventory
+* Click item to craft 
 * Eliminates need to remember recipes
 
 ## Usage
@@ -17,7 +21,9 @@ Right-click to place the QuickBench in the world.
 Click the QuickBench to open a list of craftable items.
 
 Click the items you want to craft. The crafting inputs will be taken
-from your inventory and the result 
+from your inventory and the result will be added.
+
+Repeat as desired.
 
 ## Configuration
 
@@ -54,5 +60,5 @@ Some unusual recipes or those added by mods may not behave as expected; please r
 
 ## See also
 
-* [Crafting Table II](http://www.minecraftforum.net/topic/856538-11-crafting-table-ii-v162-310112/)
+* [Crafting Table II](http://www.minecraftforum.net/topic/856538-11-crafting-table-ii-v162-310112/) - a client/server mod which heavily inspired QuickBench
 
