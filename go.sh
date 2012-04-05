@@ -1,5 +1,5 @@
 #!/bin/sh -x
-CLASSPATH=../craftbukkit-1.2.3-R0.1.jar javac *.java -Xlint:unchecked -Xlint:deprecation
+CLASSPATH=../craftbukkit-1.2.5-R1.0.jar javac *.java -Xlint:unchecked -Xlint:deprecation
 rm -rf com
 mkdir -p com/exphc/QuickBench
 mv *.class com/exphc/QuickBench
