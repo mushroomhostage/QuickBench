@@ -20,7 +20,7 @@ Create a QuickBench by crafting a Crafting Table + Book.
 
 Right-click to place the QuickBench in the world.
 
-Click the QuickBench to open a list of craftable items.
+Right-click the QuickBench to open a list of craftable items.
 
 Click the items you want to craft. The crafting inputs will be taken
 from your inventory and the result will be added.
