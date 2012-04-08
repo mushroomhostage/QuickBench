@@ -108,13 +108,22 @@ class QuickBenchListener implements Listener {
             Bukkit.addRecipe(recipe);
         }
     }
- 
+
+    // Open clicked QuickBench
     @EventHandler(priority=EventPriority.MONITOR, ignoreCancelled=true) 
     public void onPlayerInteract(PlayerInteractEvent event) {
         Player player = event.getPlayer();
         Block block = event.getClickedBlock();
 
         if (block != null && event.getAction() == Action.RIGHT_CLICK_BLOCK && isQuickBench(block)) {
+            if (!player.hasPermission("quickbench.use")) {
+                String message = plugin.getConfig().getString("quickbench.useDeniedMessage", "You do not have permission to use this QuickBench.");
+                if (message != null) {
+                    player.sendMessage(message);
+                }
+                return;
+            }
+
             List<ItemStack> outputs = precraft(player.getInventory().getContents());
 
             final int ROW_SIZE = 9;
@@ -442,29 +451,47 @@ class QuickBenchListener implements Listener {
     // QuickBench block <-> item
 
     // Place item -> block
-    @EventHandler(priority=EventPriority.MONITOR, ignoreCancelled=true)
+    @EventHandler(priority=EventPriority.HIGHEST, ignoreCancelled=true)
     public void onBlockPlace(BlockPlaceEvent event) {
         ItemStack item = event.getItemInHand();
 
         if (isQuickBench(item)) {
-            // place quickbench item as lapis block
-            event.getBlockPlaced().setTypeIdAndData(QUICKBENCH_BLOCK_ID, QUICKBENCH_BLOCK_DATA, true);
+            if (event.getPlayer().hasPermission("quickbench.place")) {
+                // place quickbench item as lapis block
+                event.getBlockPlaced().setTypeIdAndData(QUICKBENCH_BLOCK_ID, QUICKBENCH_BLOCK_DATA, true);
+            } else {
+                String message = plugin.getConfig().getString("quickbench.placeDeniedMessage", "You do not have permission to place this QuickBench.");
+                if (message != null) {
+                    event.getPlayer().sendMessage(message);
+                }
+
+                event.setCancelled(true);
+            }
         }
     }
 
     // Break block -> item
-    @EventHandler(priority=EventPriority.MONITOR, ignoreCancelled=true)
+    @EventHandler(priority=EventPriority.HIGHEST, ignoreCancelled=true)
     public void onBlockBreak(BlockBreakEvent event) {
         Block block = event.getBlock();
 
         if (block != null && isQuickBench(block)) {
-            // break tagged lapis block as quickbench item
-            ItemStack item = getQuickBenchItem();
+            if (event.getPlayer().hasPermission("quickbench.destroy")) {
+                // break tagged lapis block as quickbench item
+                ItemStack item = getQuickBenchItem();
 
-            block.setType(Material.AIR);
-            block.getWorld().dropItemNaturally(block.getLocation(), item);
+                block.setType(Material.AIR);
+                block.getWorld().dropItemNaturally(block.getLocation(), item);
 
-            event.setCancelled(true);
+                event.setCancelled(true);
+            } else {
+                String message = plugin.getConfig().getString("quickbench.destroyDeniedMessage", "You do not have permission to destroy this QuickBench.");
+                if (message != null) {
+                    event.getPlayer().sendMessage(message);
+                }
+
+                event.setCancelled(true);
+            }
         }
     }
 }

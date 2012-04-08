@@ -1,3 +1,19 @@
 name: QuickBench
 main: com.exphc.QuickBench.QuickBench
-version: 1.1
+version: 1.2
+permissions:
+    quickbench.*:
+        children:
+            quickbench.use: true
+            quickbench.place: true
+            quickbench.destroy: true
+        default: false
+    quickbench.use:
+        description: Allows you to use a QuickBench
+        default: true
+    quickbench.place:
+        description: Allows you to place a QuickBench 
+        default: true
+    quickbench.destroy:
+        description: Allows you to destroy a QuickBench
+        default: true
