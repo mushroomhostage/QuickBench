@@ -329,7 +329,14 @@ class QuickBenchListener implements Listener {
         plugin.log("raw slot = "+event.getRawSlot());
 
         if (event.getRawSlot() >= view.getTopInventory().getSize()) {
-            // clicked player inventory (bottom), let do anything
+            // clicked player inventory (bottom)
+
+            if (event.isShiftClick()) {
+                // shift-click would player inventory -> quickbench, deny
+                event.setResult(Event.Result.DENY);
+            }
+
+            // otherwise, let manipulate their own player inventory
             return;
         }
 
