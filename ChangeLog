@@ -1,5 +1,6 @@
-
-    * Fix QuickBench stealing player's items if shift-clicking player inventory
+2012-04-07  1.2
+    * Fix QuickBench stealing player's items when shift-clicking player inventory
+    * Permissions support for using, placing, and destroying a QuickBench
 
 2012-04-04  1.1
     * Only open QuickBench if right-clicked, not left-clicked
