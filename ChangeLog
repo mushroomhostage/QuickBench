@@ -1,5 +1,6 @@
 X   X
     * Fix losing crafted items if can't fit in inventory; drop on floor instead
+    * Fix right-click opening QuickBench and unintentionally placing a block
 
 2012-04-07  1.2
     * Fix QuickBench stealing player's items when shift-clicking player inventory

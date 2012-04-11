@@ -137,6 +137,9 @@ class QuickBenchListener implements Listener {
             }
 
             player.openInventory(inventory);
+
+            // don't let, for example, place a block AND open the QuickBench..
+            event.setCancelled(true);
         }
     }
 
