@@ -403,7 +403,12 @@ class QuickBenchListener implements Listener {
 
         // add to player inventory when clicked
         HashMap<Integer,ItemStack> overflow = view.getBottomInventory().addItem(item);
-        // TODO: don't add what didn't fit
+
+        // drop excess items on the floor (easier than denying the event.. maybe better?)
+        for (ItemStack excessItem: overflow.values()) {
+            player.getWorld().dropItemNaturally(player.getLocation(), excessItem);
+        }
+
 
         // Populate with new items, either adding (if have new crafting inputs) or removing (if took up all)
         List<ItemStack> newItems = precraft(playerContents);
