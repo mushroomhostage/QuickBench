@@ -176,6 +176,26 @@ class QuickBenchListener implements Listener {
         return outputs;
     }
 
+    // TODO: precraft bypassing Bukkit
+    /*
+    public List<ItemStack> precraft_bypass(ItemStack[] inputs) {
+        List recipes = net.minecraft.server.CraftingManager.getInstance().getRecipies();
+
+        for (Object recipeObject: recipes) {
+            net.minecraft.server.CraftingRecipe recipe = (net.minecraft.server.CraftingRecipe)recipeObject;
+
+            if (recipe instanceof net.minecraft.server.ShapelessRecipes) {
+                // TODO
+            } else if (recipe instanceof net.minecraft.server.ShapedRecipes) {
+                // TODO
+            } 
+            // TODO: ic2 AdvRecipe
+            // TODO: ic2 AdvShapelessRecipe
+        }
+
+        return null;
+    }*/
+
     /** Get whether the item stack is contained within an array of item stacks. */
     public boolean haveItems(ItemStack[] inputs, ItemStack check) {
         if (check == null) {    
