@@ -146,7 +146,7 @@ class QuickBenchListener implements Listener {
     public List<ItemStack> precraft(ItemStack[] inputs) {
         List<ItemStack> outputs = new ArrayList<ItemStack>();
 
-        Iterator<Recipe> recipes = getRecipesIterator();
+        Iterator<Recipe> recipes = getRecipesIteratorX();
 
 
         int recipeCount = 0;
@@ -176,7 +176,7 @@ class QuickBenchListener implements Listener {
         return outputs;
     }
 
-    public Iterator<Recipe> getRecipesIterator() {
+    public Iterator<Recipe> getRecipesIteratorX() {
         // TODO: option to NOT bypass Bukkit
 
         try {
@@ -186,6 +186,31 @@ class QuickBenchListener implements Listener {
             e.printStackTrace();
             return Bukkit.getServer().recipeIterator();
         }
+    }
+
+    public List<Recipe> getRecipesForX(ItemStack item) {
+        List<Recipe> matchedRecipes = new ArrayList<Recipe>();
+
+        try {
+            Iterator<Recipe> iter = getRecipesIteratorX();
+
+            while(iter.hasNext()) {
+                Recipe recipe = iter.next();
+
+                ItemStack result = recipe.getResult();
+                if (result.getTypeId() == item.getTypeId() &&
+                    (result.getDurability() == -1 || (result.getDurability() == item.getDurability()))) {
+
+                    matchedRecipes.add(recipe);
+                }
+            }
+
+        } catch (Exception e) {
+            plugin.logger.warning("Failed to reflect recipes for: " + e + ", falling back");
+            return Bukkit.getServer().getRecipesFor(item);
+        }
+
+        return matchedRecipes;
     }
 
     // Get "advanced" crafting recipe inputs from custom IndustrialCraft^2 AdvRecipe or AdvShapelessRecipe classes
@@ -231,8 +256,7 @@ class QuickBenchListener implements Listener {
             // Note we add both shapeless and shaped recipes as shapeless, since their shape doesn't matter for QuickBench!
             String className = recipe.getClass().getName();
             if (className.equals("ic2.common.AdvShapelessRecipe") || className.equals("ic2.common.AdvRecipe")) {
-                // TODO: we really need to restrict ourselves to only crafting recipes!
-                // not custom furnace recipes..macerator recipes..way too OP
+                // TODO: do we need to restrict ourselves to avoiding i.e. macerator and extractor recipes? seems not
 
                 plugin.log("Adding IC2 recipe:  " + recipe + " for " + result);
 
@@ -394,6 +418,7 @@ class QuickBenchListener implements Listener {
             onInventoryClick(event);
         } catch (Exception e) {
             plugin.logger.warning("onInventoryClick exception: " + e);
+            e.printStackTrace();
 
             event.setResult(Event.Result.DENY);
         }
@@ -441,7 +466,7 @@ class QuickBenchListener implements Listener {
         ItemStack[] playerContents = playerInventory.getContents();
 
         // Remove crafting inputs
-        List<Recipe> recipes = Bukkit.getServer().getRecipesFor(item);
+        List<Recipe> recipes = getRecipesForX(item);
         if (recipes == null) {
             plugin.logger.warning("No recipes for "+item);
             event.setResult(Event.Result.DENY);
