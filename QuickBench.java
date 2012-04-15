@@ -146,7 +146,7 @@ class QuickBenchListener implements Listener {
     public List<ItemStack> precraft(ItemStack[] inputs) {
         List<ItemStack> outputs = new ArrayList<ItemStack>();
 
-        Iterator<Recipe> recipes = Bukkit.getServer().recipeIterator();
+        Iterator<Recipe> recipes = getRecipesIterator();
 
 
         int recipeCount = 0;
@@ -176,25 +176,99 @@ class QuickBenchListener implements Listener {
         return outputs;
     }
 
-    // TODO: precraft bypassing Bukkit
-    /*
-    public List<ItemStack> precraft_bypass(ItemStack[] inputs) {
-        List recipes = net.minecraft.server.CraftingManager.getInstance().getRecipies();
+    public Iterator<Recipe> getRecipesIterator() {
+        // TODO: option to NOT bypass Bukkit
 
-        for (Object recipeObject: recipes) {
+        try {
+            return bypassGetRecipesIterator();
+        } catch (Exception e) {
+            plugin.logger.warning("Failed to reflect crafting manager: " + e + ", falling back");
+            e.printStackTrace();
+            return Bukkit.getServer().recipeIterator();
+        }
+    }
+
+    // Bypass Bukkit's recipe iterator and wrap it ourself
+    public Iterator<Recipe> bypassGetRecipesIterator() throws Exception {
+        List<Recipe> wrappedRecipes = new ArrayList<Recipe>();
+
+        List rawRecipes = net.minecraft.server.CraftingManager.getInstance().getRecipies();
+
+        for (Object recipeObject: rawRecipes) {
             net.minecraft.server.CraftingRecipe recipe = (net.minecraft.server.CraftingRecipe)recipeObject;
 
+            Recipe wrappedRecipe = recipe.toBukkitRecipe();
+
+            if (wrappedRecipe != null) {
+                // standard recipe, Bukkit can wrap it for us
+                wrappedRecipes.add(wrappedRecipe);
+                continue;
+            }
+
+            net.minecraft.server.ItemStack result = recipe.b(); // MCP getResult()
+
+            plugin.logger.warning("Unwrappable recipe! " + recipe + " for " + result);
+
+            // IndustrialCraft^2 custom crafting recipe compatibility
+            // for hints see https://github.com/perky/CraftingTableII/blob/master/lukeperkin/craftingtableii/ContainerClevercraft.java
+            // getRecipeIngredients()
+            String className = recipe.getClass().getName();
+            if (className.equals("ic2.common.AdvShapelessRecipe")) {
+                Field advRecipeInputField = recipe.getClass().getDeclaredField("input");
+
+                advRecipeInputField.setAccessible(true);
+                net.minecraft.server.ItemStack[] inputs = (net.minecraft.server.ItemStack[])advRecipeInputField.get(recipe);
+
+                ShapelessRecipe wrappedShapelessRecipe = new ShapelessRecipe((ItemStack)(new CraftItemStack(result)));
+
+                for (net.minecraft.server.ItemStack input: inputs) {
+                    ItemStack wrappedInput = (ItemStack)(new CraftItemStack(input));
+
+                    plugin.logger.warning("- input: " + wrappedInput);
+
+                    wrappedShapelessRecipe.addIngredient(wrappedInput.getAmount(), wrappedInput.getType(), wrappedInput.getDurability());
+                }
+                plugin.logger.warning("\n");
+
+                wrappedRecipes.add(wrappedShapelessRecipe);
+            }
+
+
+            /*
             if (recipe instanceof net.minecraft.server.ShapelessRecipes) {
-                // TODO
+                List theseInputs = (List)shapelessRecipeItemsField.get(recipe);
+
+                ShapelessRecipe shapelessRecipeWrapper = new ShapelessRecipe(recipe.getResult());
+
+                for (Object inputObject: inputs) {
+                    net.minecraft.server.ItemStack inputItem = (net.minecraft.server.ItemStack)inputObject;
+
+                    shapelessRecipeWrapper.add((ItemStack)(new CraftItemStack(inputItem)));
+                }
+
+                wrappedRecipes.add(shapelessRecipeWrapper);
+
             } else if (recipe instanceof net.minecraft.server.ShapedRecipes) {
-                // TODO
+                ShapedRecipe shapedRecipeWrapper = new ShapedRecipe(recipe.getResult());
+
+                net.minecraft.server.ItemStack[] inputs = (net.minecraft.server.ItemStack[])shapedRecipeItemsField.get(recipe);
+
+                for (int i = 0; i < inputs.length; i += 1) {
+                    ItemStack inputItem = new CraftItemStack((net.minecraft.server.ItemStack)inputs[i]);
+
+                    //TODO matchedInputs.add(inputItem);
+                }
+                //TODO
+                wrappedRecipes.add(shapedRecipeWrapper);
             } 
+            */
+
             // TODO: ic2 AdvRecipe
             // TODO: ic2 AdvShapelessRecipe
         }
 
-        return null;
-    }*/
+        return wrappedRecipes.iterator();
+    }
 
     /** Get whether the item stack is contained within an array of item stacks. */
     public boolean haveItems(ItemStack[] inputs, ItemStack check) {
