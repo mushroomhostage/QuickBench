@@ -1,3 +1,7 @@
+2012-04-15  2.0
+    * Add support for IC2 crafting
+    * Add quickBench.bypassBukkit config option to use Bukkit API or nms classes
+
 2012-04-11  1.2.1
     * Fix losing crafted items if can't fit in inventory; drop on floor instead
     * Fix right-click opening QuickBench and unintentionally placing a block

@@ -177,7 +177,9 @@ class QuickBenchListener implements Listener {
     }
 
     public Iterator<Recipe> getRecipesIteratorX() {
-        // TODO: option to NOT bypass Bukkit
+        if (!plugin.getConfig().getBoolean("quickBench.bypassBukkit", true)) {
+            return Bukkit.getServer().recipeIterator();
+        }
 
         try {
             return bypassGetRecipesIterator();
@@ -189,6 +191,10 @@ class QuickBenchListener implements Listener {
     }
 
     public List<Recipe> getRecipesForX(ItemStack item) {
+        if (!plugin.getConfig().getBoolean("quickBench.bypassBukkit", true)) {
+            return Bukkit.getServer().getRecipesFor(item);
+        }
+
         List<Recipe> matchedRecipes = new ArrayList<Recipe>();
 
         try {
@@ -272,7 +278,7 @@ class QuickBenchListener implements Listener {
             } else {
                 // TODO: for RedPower2 support: eloraam.core.CoverRecipe@10d5249b for 1xtile.rpwire
 
-                plugin.logger.warning("Unrecognized recipe type: " + recipe + " for " + result);
+                plugin.log("Unrecognized recipe type: " + recipe + " for " + result);
             }
         }
 
