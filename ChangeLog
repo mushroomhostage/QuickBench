@@ -1,3 +1,6 @@
+X   X
+    * Fix crafting results with multiple recipes showing unexpected quantities
+
 2012-04-15  2.0
     * Add support for IC2 crafting
     * Add quickBench.bypassBukkit config option to use Bukkit API or nms classes

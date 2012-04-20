@@ -132,8 +132,8 @@ class QuickBenchListener implements Listener {
             // Note: >54 still shows dividing line on client, but can interact
             Inventory inventory = Bukkit.createInventory(player, ROW_SIZE * rows, QUICKBENCH_TITLE);
 
-            for (ItemStack output: outputs) {
-                inventory.addItem(output);
+            for (int i = 0; i < Math.min(outputs.size(), inventory.getSize()); i += 1) {
+                inventory.setItem(i, outputs.get(i));
             }
 
             player.openInventory(inventory);
