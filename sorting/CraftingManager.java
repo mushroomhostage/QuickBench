@@ -111,7 +111,7 @@ public class CraftingManager {
 
     // CraftBukkit start
     public void sort() {
-        Collections.sort(this.recipies, new RecipeSorter(this));
+        //Collections.sort(this.recipies, new RecipeSorter(this));
     }
     // CraftBukkit end
 
