@@ -81,9 +81,16 @@ However, the items in the slots can still be picked up as you would expect.
 
 If there are too many craftable items, not all can be shown. Close and reopen the QuickBench or temporarily drop items as a workaround.
 
-Some unusual recipes or those added by mods may not behave as expected; please report any problems.
+Some unusual recipes or those added by mods may not behave as expected; please report any problems. Known:
+
+* [RedPower 2](http://www.minecraftforum.net/topic/365357-125-eloraams-mods-redpower-2-prerelease-5b2/) cover recipes are not supported (eloraam.core.CoverRecipe).
+* [EnderStorage](http://www.minecraftforum.net/topic/1160665-125mods-quiddity-modding/) chest recipes are not supported (codechicken.enderstorage.EnderChestRecipe).
+* ***Items lose tagged data***. This affects at least [IndustrialCraft^2](http://wiki.industrial-craft.net/), causing items to lose their charge and seed bags to lose their seed information. For details see [BUKKIT-1704 Missing ItemStack Losing NBTTagCompound](https://bukkit.atlassian.net/browse/BUKKIT-1704). *Until this is fixed, do not have any tagged items (charged items, seed bags, etc.) in your inventory while opening the QuickBench.*
+
 
 ## See also
+
+* [Crafting Table III](http://www.minecraftforum.net/topic/1189975-b18mc125-craftingtableiii-bug-fixs-more-mod-support/) - an updated client/server mod with recursive crafting
 
 * [Crafting Table II](http://www.minecraftforum.net/topic/856538-11-crafting-table-ii-v162-310112/) - a client/server mod which heavily inspired QuickBench
 
