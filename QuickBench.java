@@ -435,7 +435,7 @@ class QuickBenchListener implements Listener {
     public void onInventoryClick(InventoryClickEvent event) {
         InventoryView view = event.getView();
 
-        if (!view.getTitle().equals(QUICKBENCH_TITLE)) {
+        if (view == null || view.getTitle() == null || !view.getTitle().equals(QUICKBENCH_TITLE)) {
             return;
         }
 
@@ -556,7 +556,7 @@ class QuickBenchListener implements Listener {
     public void onInventoryClose(InventoryCloseEvent event) {
         InventoryView view = event.getView();
 
-        if (!view.getTitle().equals(QUICKBENCH_TITLE)) {
+        if (view == null || view.getTitle() == null || !view.getTitle().equals(QUICKBENCH_TITLE)) {
             // not for us
             return;
         }
