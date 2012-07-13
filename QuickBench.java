@@ -153,21 +153,26 @@ class QuickBenchListener implements Listener {
 
         // TODO: why does this miss some modded recipes?
         RECIPE: while(recipes.hasNext()) {
-            Recipe recipe = recipes.next();
+            try {
+                Recipe recipe = recipes.next();
 
-            if (recipe == null) {
-                // null recipes, it happens!
-                continue;
-            }
+                if (recipe == null) {
+                    // null recipes, it happens!
+                    continue;
+                }
 
-            recipeCount += 1;
+                recipeCount += 1;
 
-            ItemStack result = recipe.getResult();
-            
-            plugin.log("recipe " + recipeCount + ". output = " + result);
+                ItemStack result = recipe.getResult();
+                
+                plugin.log("recipe " + recipeCount + ". output = " + result);
 
-            if (canCraft(inputs, recipe)) {
-                outputs.add(result);
+                if (canCraft(inputs, recipe)) {
+                    outputs.add(result);
+                }
+            } catch (Exception e) {
+                plugin.log("precraft skipping recipe");
+                e.printStackTrace();
             }
         }
 
@@ -247,7 +252,13 @@ class QuickBenchListener implements Listener {
         for (Object recipeObject: rawRecipes) {
             net.minecraft.server.CraftingRecipe recipe = (net.minecraft.server.CraftingRecipe)recipeObject;
 
-            Recipe wrappedRecipe = recipe.toBukkitRecipe();
+            Recipe wrappedRecipe = null;
+            try {
+                wrappedRecipe = recipe.toBukkitRecipe();
+            } catch (Exception e) {
+                plugin.logger.warning("Failed to call toBukkitRecipe on "+recipe+", ignoring");
+                e.printStackTrace();
+            }
 
             if (wrappedRecipe != null) {
                 // standard recipe, Bukkit can wrap it for us
