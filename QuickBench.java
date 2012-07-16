@@ -218,6 +218,7 @@ class QuickBenchListener implements Listener {
 
         } catch (Exception e) {
             plugin.logger.warning("Failed to reflect recipes for: " + e + ", falling back");
+            e.printStackTrace();
             return Bukkit.getServer().getRecipesFor(item);
         }
 
@@ -231,12 +232,40 @@ class QuickBenchListener implements Listener {
         Field advRecipeInputField = recipe.getClass().getDeclaredField("input");
 
         advRecipeInputField.setAccessible(true);
-        net.minecraft.server.ItemStack[] inputs = (net.minecraft.server.ItemStack[])advRecipeInputField.get(recipe);
+        Object[] inputs = (Object[])advRecipeInputField.get(recipe);
 
-        for (net.minecraft.server.ItemStack input: inputs) {
-            ItemStack wrappedInput = (ItemStack)(new CraftItemStack(input));
+        for (Object input: inputs) {
+            // see ic2.common.AdvShapelessRecipe constructor for supported types
+            net.minecraft.server.ItemStack itemStack = null;
 
-            wrappedInputs.add(wrappedInput);
+            if (input instanceof net.minecraft.server.ItemStack) {
+                itemStack = (net.minecraft.server.ItemStack)input;
+            } else if (input instanceof net.minecraft.server.Block) {
+                itemStack = new net.minecraft.server.ItemStack((net.minecraft.server.Block)input, 1, -1);
+            } else if (input instanceof net.minecraft.server.Item) {
+                itemStack = new net.minecraft.server.ItemStack((net.minecraft.server.Item)input, 1, -1);
+            } else if (input instanceof Boolean) {
+                boolean hidden = ((Boolean)input).booleanValue();
+                plugin.logger.warning("IC2 hidden = " + hidden);
+                // TODO: skip if hidden?
+                continue;
+            } else if (input instanceof String) {
+                plugin.logger.warning("IC2 string = " + input);
+                // TODO: support this
+                /*
+                AdvRecipe.oreDictionaryIC2 temp = ic2.common.AdvRecipe.oreDictionaryIC2.valueOf((String)input);
+                wrappedInput = (ItemStack)(new CraftItemStack(new net.minecrtemp.getItemStack();
+                */
+                plugin.logger.warning("skipping advanced IC2 recipe");
+                return null;
+            } else {
+                throw new IllegalArgumentException("Unrecognized type in IC2 advanced recipe: " + input);
+            }
+
+            ItemStack wrappedItemStack = new CraftItemStack(itemStack);
+
+
+            wrappedInputs.add(wrappedItemStack);
 
         }
 
@@ -279,13 +308,17 @@ class QuickBenchListener implements Listener {
 
                 ShapelessRecipe wrappedShapelessRecipe = new ShapelessRecipe((ItemStack)(new CraftItemStack(result)));
 
-                for (ItemStack wrappedInput: getIC2AdvRecipeInputs(recipe)) {
-                    plugin.log("- input: " + wrappedInput);
+                List<ItemStack> inputs = getIC2AdvRecipeInputs(recipe);
 
-                    wrappedShapelessRecipe.addIngredient(wrappedInput.getAmount(), wrappedInput.getType(), wrappedInput.getDurability());
+                if (inputs != null) {
+                    for (ItemStack wrappedInput: inputs) {
+                        plugin.log("- input: " + wrappedInput);
+
+                        wrappedShapelessRecipe.addIngredient(wrappedInput.getAmount(), wrappedInput.getType(), wrappedInput.getDurability());
+                    }
+
+                    wrappedRecipes.add(wrappedShapelessRecipe);
                 }
-
-                wrappedRecipes.add(wrappedShapelessRecipe);
             } else {
                 // TODO: for RedPower2 support: eloraam.core.CoverRecipe@10d5249b for 1xtile.rpwire
 

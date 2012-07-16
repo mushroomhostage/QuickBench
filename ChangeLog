@@ -1,3 +1,6 @@
+X   X
+    * Skip advanced IC2 recipes
+
 2012-05-04  2.2
     * Fix broken toBukkitRecipe() wrappers preventing crafting (IC2 1.97 r1 bug)
     * Fix NPE in event handler preventing use of EnderStorage mod
