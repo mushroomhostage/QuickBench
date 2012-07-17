@@ -4,7 +4,7 @@ Tired of remembering crafting recipes? Use a QuickBench! Unlike a normal craftin
 which operates on a crafting grid, the QuickBench shows you a list of available items,
 and you simply click to craft.
 
-**[Download QuickBench 2.2](http://dev.bukkit.org/server-mods/quickbench/files/7-quick-bench-2-2/)** - released 2012/07/13 for 1.2.5; improved mod compatibility
+**[Download QuickBench 2.2.2](http://dev.bukkit.org/server-mods/quickbench/files/8-quick-bench-2-2-2/)** - released 2012/07/16
 
 Features:
 
