@@ -64,12 +64,17 @@ class TransparentRecipe {
     static QuickBench plugin; 
 
     // Each ingredient which must be present; outer = all, inner = any, e.g. (foo OR bar) AND (baz) AND (quux)
-    // The inner set is the alternatives; it may just have one ItemStack, or more
+    // The inner list is the alternatives; it may just have one ItemStack, or more
     // This is expressiveness (not provided by Bukkit wrappers) is necessary to support ore dictionary recipes
-    ArrayList<HashSet<ItemStack>> ingredientsSet;
+    ArrayList<ArrayList<ItemStack>> ingredientsList;
 
+    // Crafting result output
     ItemStack result;
 
+    // Name of recipe class for debugging
+    String className;
+
+    @SuppressWarnings("unchecked")
     public TransparentRecipe(net.minecraft.server.CraftingRecipe/*MCP IRecipe*/ opaqueRecipe) {
         // Get recipe result
         result = new CraftItemStack(opaqueRecipe.b()); // MCP getResult()
@@ -77,9 +82,9 @@ class TransparentRecipe {
 
 
         // Get recipe ingredients
-        ingredientsSet = new ArrayList<HashSet<ItemStack>>();
+        ingredientsList = new ArrayList<ArrayList<ItemStack>>();
 
-        String className = opaqueRecipe.getClass().getName();
+        className = opaqueRecipe.getClass().getName();
 
         // For vanilla recipes, Bukkit's conversion wrappers are fine
         if (opaqueRecipe instanceof net.minecraft.server.ShapelessRecipes) {
@@ -89,9 +94,9 @@ class TransparentRecipe {
             // Shapeless recipes are a simple list of everything we need, 1:1
             for (ItemStack ingredient: ingredientList) {
                 if (ingredient != null) {
-                    HashSet<ItemStack> innerSet = new HashSet<ItemStack>();
-                    innerSet.add(ingredient);    // no alternatives, 1-element set
-                    ingredientsSet.add(innerSet);
+                    ArrayList<ItemStack> innerList = new ArrayList<ItemStack>();
+                    innerList.add(ingredient);    // no alternatives, 1-element set
+                    ingredientsList.add(innerList);
                 }
             }
         } else if (opaqueRecipe instanceof net.minecraft.server.ShapedRecipes) {
@@ -113,11 +118,48 @@ class TransparentRecipe {
                         continue;
                     }
 
-                    HashSet<ItemStack> innerSet = new HashSet<ItemStack>();
-                    innerSet.add(ingredient);    // no alternatives, 1-element set
-                    ingredientsSet.add(innerSet);
+                    ArrayList<ItemStack> innerList = new ArrayList<ItemStack>();
+                    innerList.add(ingredient);    // no alternatives, 1-element set
+                    ingredientsList.add(innerList);
                 }
             }
+        } else if (className.equals("forge.oredict.ShapedOreRecipe")) {
+            // Forge ore recipes.. we're on our own
+            Object[] inputs = null;
+            try {
+                Field field = opaqueRecipe.getClass().getDeclaredField("input");
+                field.setAccessible(true);
+                inputs = (Object[])field.get(opaqueRecipe);
+            } catch (Exception e) {
+                plugin.logger.warning("Failed to reflect on forge.oredict.ShapedOreRecipe for "+result);
+                e.printStackTrace();
+                throw new IllegalArgumentException(e);
+            }
+            if (inputs == null) {
+                throw new IllegalArgumentException("Uncaught error reflecting on forge.oredict.ShapedOreRecipe");
+            }
+
+            for (Object input: inputs) {
+                // Each element is either a singular item, or list of possible items (populated from ore dictionary)
+                // Fortunately, our data structure is similar, just need to convert the types
+                
+                ArrayList<ItemStack> innerList = new ArrayList<ItemStack>();
+
+                if (input instanceof net.minecraft.server.ItemStack) {
+                    innerList.add(new CraftItemStack((net.minecraft.server.ItemStack)input));
+                } else if (input instanceof ArrayList) {
+                    for (net.minecraft.server.ItemStack alternative: (ArrayList<net.minecraft.server.ItemStack>)input) {
+                        innerList.add(new CraftItemStack(alternative));
+                    }
+                }
+
+                ingredientsList.add(innerList);
+            }
+
+        // TODO: forge.oredict.ShapelessOreRecipe
+
+
+
         // TODO else if (className.equals("ic2.common.AdvShapelessRecipe") || className.equals("ic2.common.AdvRecipe")) {
         } else {
             throw new IllegalArgumentException("Unsupported recipe class: " + className + " of " + opaqueRecipe);
@@ -126,10 +168,6 @@ class TransparentRecipe {
 
         // TODO: ic2.common.AdvShapelessRecipe
         // TODO: ic2.common.AdvRecipe
-
-        // TODO: forge.oredict.ShapedOreRecipe
-        // TODO: forge.oredict.ShapelessOreRecipe
-
 
         // TODO: eloraam.core.CoverRecipe (RedPower)
         // TODO: codechicken.enderstorage.EnderChestRecipe (EnderStorage)
@@ -144,13 +182,13 @@ class TransparentRecipe {
 
     /** Get whether array of item stacks has all of the recipe inputs. */
     public boolean canCraft(final ItemStack[] inputs) {
-        plugin.log("- testing result="+getResult()+" canCraft inputs " + inputs + " vs ingredientsSet " + ingredientsSet);
+        plugin.log("- testing class="+className+" result="+getResult()+" canCraft inputs " + inputs + " vs ingredientsList " + ingredientsList);
 
         // Clone so don't modify original
         ItemStack[] accum = cloneItemStacks(inputs);
 
         // Remove items as we go, ensuring we can successfully remove everything
-        for (HashSet<ItemStack> alternativeIngredients: ingredientsSet) {
+        for (ArrayList<ItemStack> alternativeIngredients: ingredientsList) {
             boolean have = false;
 
             if (alternativeIngredients == null) {
