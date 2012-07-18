@@ -171,7 +171,6 @@ class TransparentRecipe {
                 throw new IllegalArgumentException("Uncaught error reflecting on forge.oredict.ShapelessOreRecipe");
             }
 
-            // TODO: refactor
             for (Object input: inputs) {
                 ArrayList<ItemStack> innerList = new ArrayList<ItemStack>();
                 if (input instanceof net.minecraft.server.ItemStack) {
@@ -184,14 +183,45 @@ class TransparentRecipe {
                 ingredientsList.add(innerList);
             }
 
-        // TODO else if (className.equals("ic2.common.AdvShapelessRecipe") || className.equals("ic2.common.AdvRecipe")) {
+        } else if (className.equals("ic2.common.AdvShapelessRecipe") || className.equals("ic2.common.AdvRecipe")) {
+            // IndustrialCraft^2 shapeless and shaped recipes have the same ingredients list
+            // This is for 1.97 - for 1.95b see QuickBench 2.1
+
+            Object[] inputs = null;
+            try {
+                Field field = opaqueRecipe.getClass().getDeclaredField("input");
+                field.setAccessible(true);
+                inputs = (Object[])field.get(opaqueRecipe);
+            } catch (Exception e) {
+                plugin.logger.warning("Failed to reflect on ic2.common.AdvRecipe for "+result);
+                e.printStackTrace();
+                throw new IllegalArgumentException(e);
+            }
+            if (inputs == null) {
+                throw new IllegalArgumentException("Uncaught error reflecting on ic2.common.AdvRecipe");
+            }
+
+            for (Object input: inputs) {
+                ArrayList<ItemStack> innerList = new ArrayList<ItemStack>();
+
+                // see also ic2.common.AdvRecipe.resolveOreDict, calls forge.oredict.OreDictionary.getOres((String)obj), gets a list
+                // if the ingredient was a string, or wraps ItemStack in 1-element list if is an ItemStack
+                if (input instanceof String) {
+                    ArrayList<net.minecraft.server.ItemStack> alternatives = forge.oredict.OreDictionary.getOres((String)input)/*MCPC only!*/;
+                    for (net.minecraft.server.ItemStack alternative: alternatives) {
+                        innerList.add(new CraftItemStack(alternative));
+                    }
+                } else if (input instanceof net.minecraft.server.ItemStack) {
+                    innerList.add(new CraftItemStack((net.minecraft.server.ItemStack)input));
+                }
+
+                // and also public ItemStack b(InventoryCrafting inventorycrafting) = getCraftingResult in IC2 - it transfers charge to/from electric items
+
+                ingredientsList.add(innerList);
+            }
         } else {
             throw new IllegalArgumentException("Unsupported recipe class: " + className + " of " + opaqueRecipe);
         }
-
-
-        // TODO: ic2.common.AdvShapelessRecipe
-        // TODO: ic2.common.AdvRecipe
 
         // TODO: eloraam.core.CoverRecipe (RedPower)
         // TODO: codechicken.enderstorage.EnderChestRecipe (EnderStorage)
@@ -202,6 +232,8 @@ class TransparentRecipe {
 
     public ItemStack getResult() {
         // TODO: need to call ItemStack b(InventoryCrafting)! for IC2, it performs electric item charge/discharge!
+        // = the post-crafting hook, MCP IRecipe: ItemStack getCraftingResult(InventoryCrafting inventorycrafting)
+        // not only MCP boolean matches(InventoryCrafting inventorycrafting);
         return result;
     }
 
@@ -315,6 +347,7 @@ class TransparentRecipe {
                 TransparentRecipe recipe = new TransparentRecipe(opaqueRecipe);
 
                 if (recipe.canCraft(inputs)) {
+                    // TODO: should we de-duplicate multiple recipes to same result? I'm thinking not, to support different ingredient inputs (positional)
                     outputs.add(recipe.getResult());
                 }
             } catch (Exception e) {
