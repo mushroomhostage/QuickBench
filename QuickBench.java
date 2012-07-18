@@ -155,10 +155,34 @@ class TransparentRecipe {
 
                 ingredientsList.add(innerList);
             }
+        } else if (className.equals("forge.oredict.ShapelessOreRecipe")) {
+            // Forge ore shapeless is very similar, except inputs are a list instead of array
+            ArrayList inputs = null;
+            try {
+                Field field = opaqueRecipe.getClass().getDeclaredField("input");
+                field.setAccessible(true);
+                inputs = (ArrayList)field.get(opaqueRecipe);
+            } catch (Exception e) {
+                plugin.logger.warning("Failed to reflect on forge.oredict.ShapelessOreRecipe for "+result);
+                e.printStackTrace();
+                throw new IllegalArgumentException(e);
+            }
+            if (inputs == null) {
+                throw new IllegalArgumentException("Uncaught error reflecting on forge.oredict.ShapelessOreRecipe");
+            }
 
-        // TODO: forge.oredict.ShapelessOreRecipe
-
-
+            // TODO: refactor
+            for (Object input: inputs) {
+                ArrayList<ItemStack> innerList = new ArrayList<ItemStack>();
+                if (input instanceof net.minecraft.server.ItemStack) {
+                    innerList.add(new CraftItemStack((net.minecraft.server.ItemStack)input));
+                } else if (input instanceof ArrayList) {
+                    for (net.minecraft.server.ItemStack alternative: (ArrayList<net.minecraft.server.ItemStack>)input) {
+                        innerList.add(new CraftItemStack(alternative));
+                    }
+                }
+                ingredientsList.add(innerList);
+            }
 
         // TODO else if (className.equals("ic2.common.AdvShapelessRecipe") || className.equals("ic2.common.AdvRecipe")) {
         } else {
@@ -174,6 +198,7 @@ class TransparentRecipe {
         // TODO: nuclearcontrol.StorageArrayRecipe (IC2 Nuclear Control 1.1.10+)
 
     }
+
 
     public ItemStack getResult() {
         // TODO: need to call ItemStack b(InventoryCrafting)! for IC2, it performs electric item charge/discharge!
