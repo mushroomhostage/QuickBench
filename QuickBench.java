@@ -320,10 +320,15 @@ class QuickBenchListener implements Listener {
                     wrappedRecipes.add(wrappedShapelessRecipe);
                 }
             } else {
-                // TODO: for RedPower2 support: eloraam.core.CoverRecipe@10d5249b for 1xtile.rpwire
-
                 plugin.log("Unrecognized recipe type: " + recipe + " for " + result);
             }
+            // TODO: forge.oredict.ShapedOreRecipe
+            // TODO: forge.oredict.ShapelessOreRecipe
+
+
+            // TODO: eloraam.core.CoverRecipe (RedPower)
+            // TODO: codechicken.enderstorage.EnderChestRecipe (EnderStorage)
+            // TODO: nuclearcontrol.StorageArrayRecipe (IC2 Nuclear Control 1.1.10+)
         }
 
         return wrappedRecipes.iterator();
