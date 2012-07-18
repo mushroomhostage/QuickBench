@@ -64,9 +64,9 @@ class TransparentRecipe {
     static QuickBench plugin; 
 
     // Each ingredient which must be present; outer = all, inner = any, e.g. (foo OR bar) AND (baz) AND (quux)
-    // The inner set is the list of alternatives; it may just have one ItemStack, or more
+    // The inner set is the alternatives; it may just have one ItemStack, or more
     // This is expressiveness (not provided by Bukkit wrappers) is necessary to support ore dictionary recipes
-    HashSet<HashSet<ItemStack>> ingredientsSet;
+    ArrayList<HashSet<ItemStack>> ingredientsSet;
 
     ItemStack result;
 
@@ -77,7 +77,7 @@ class TransparentRecipe {
 
 
         // Get recipe ingredients
-        ingredientsSet = new HashSet<HashSet<ItemStack>>();
+        ingredientsSet = new ArrayList<HashSet<ItemStack>>();
 
         String className = opaqueRecipe.getClass().getName();
 
@@ -99,22 +99,23 @@ class TransparentRecipe {
             Map<Character,ItemStack> ingredientMap = shapedRecipe.getIngredientMap();
 
             // Shaped recipes' order doesn't matter for us, but the count of each ingredient in the map does
-            for (Map.Entry<Character,ItemStack> entry: ingredientMap.entrySet()) {
-                char code = entry.getKey().charValue();
-                ItemStack ingredient = entry.getValue();
-
-                if (ingredient != null) {
-                    for (String shapeLine: shapedRecipe.getShape()) {
-                        for (int i = 0; i < shapeLine.length(); i += 1) {
-                            char thisCode = shapeLine.charAt(i);
-
-                            if (thisCode == code) {
-                                HashSet<ItemStack> innerSet = new HashSet<ItemStack>();
-                                innerSet.add(ingredient);    // no alternatives, 1-element set
-                                ingredientsSet.add(innerSet);
-                            }
-                        }
+            for (String shapeLine: shapedRecipe.getShape()) {
+                for (int i = 0; i < shapeLine.length(); i += 1) {
+                    char code = shapeLine.charAt(i);
+                    if (code == ' ') {
+                        // placeholder
+                        continue;
                     }
+
+                    ItemStack ingredient = ingredientMap.get(code);
+                    if (ingredient == null) {
+                        // placeholder
+                        continue;
+                    }
+
+                    HashSet<ItemStack> innerSet = new HashSet<ItemStack>();
+                    innerSet.add(ingredient);    // no alternatives, 1-element set
+                    ingredientsSet.add(innerSet);
                 }
             }
         // TODO else if (className.equals("ic2.common.AdvShapelessRecipe") || className.equals("ic2.common.AdvRecipe")) {
