@@ -87,9 +87,11 @@ class TransparentRecipe {
             List<ItemStack> ingredientList = shapelessRecipe.getIngredientList();
 
             for (ItemStack ingredient: ingredientList) {
-                HashSet<ItemStack> innerSet = new HashSet<ItemStack>();
-                innerSet.add(ingredient);    // no alternatives, 1-element set
-                ingredientsSet.add(innerSet);
+                if (ingredient != null) {
+                    HashSet<ItemStack> innerSet = new HashSet<ItemStack>();
+                    innerSet.add(ingredient);    // no alternatives, 1-element set
+                    ingredientsSet.add(innerSet);
+                }
             }
         } else if (opaqueRecipe instanceof net.minecraft.server.ShapedRecipes) {
             ShapedRecipe shapedRecipe = ((net.minecraft.server.ShapedRecipes)opaqueRecipe).toBukkitRecipe();
@@ -97,9 +99,11 @@ class TransparentRecipe {
 
             // order not preserved
             for (ItemStack ingredient: ingredientMap.values()) {
-                HashSet<ItemStack> innerSet = new HashSet<ItemStack>();
-                innerSet.add(ingredient);    // no alternatives, 1-element set
-                ingredientsSet.add(innerSet);
+                if (ingredient != null) {
+                    HashSet<ItemStack> innerSet = new HashSet<ItemStack>();
+                    innerSet.add(ingredient);    // no alternatives, 1-element set
+                    ingredientsSet.add(innerSet);
+                }
             }
         // TODO else if (className.equals("ic2.common.AdvShapelessRecipe") || className.equals("ic2.common.AdvRecipe")) {
         } else {
@@ -127,7 +131,7 @@ class TransparentRecipe {
 
     /** Get whether array of item stacks has all of the recipe inputs. */
     public boolean canCraft(final ItemStack[] inputs) {
-        plugin.log("- testing canCraft inputs " + inputs + " vs ingredientsSet " + ingredientsSet);
+        plugin.log("- testing result="+getResult()+" canCraft inputs " + inputs + " vs ingredientsSet " + ingredientsSet);
 
         // Clone so don't modify original
         ItemStack[] accum = cloneItemStacks(inputs);
@@ -219,6 +223,36 @@ class TransparentRecipe {
 
         return copy;
     }
+
+    /** Return all items which can be crafted using given inputs. */
+    public static List<ItemStack> precraft(ItemStack[] inputs) {
+        List<ItemStack> outputs = new ArrayList<ItemStack>();
+        int recipeCount = 0;
+
+        // TODO: have a pure Bukkit API fallback in case things go wrong (like in QuickBench 2.x series; uses iterator / Bukkit.getServer().getRecipesFor, etc.)
+        List opaqueRecipes = net.minecraft.server.CraftingManager.getInstance().getRecipies();
+
+        for (Object recipeObject: opaqueRecipes) {
+            net.minecraft.server.CraftingRecipe opaqueRecipe = (net.minecraft.server.CraftingRecipe)recipeObject;
+
+            try {
+                TransparentRecipe recipe = new TransparentRecipe(opaqueRecipe);
+
+                if (recipe.canCraft(inputs)) {
+                    outputs.add(recipe.getResult());
+                }
+            } catch (Exception e) {
+                plugin.log("precraft skipping recipe: "+opaqueRecipe);
+                e.printStackTrace();
+            }
+        }
+
+        plugin.log("Total recipes: " + recipeCount + ", craftable: " + outputs.size());
+
+        return outputs;
+    }
+
+
 }
 
 class QuickBenchListener implements Listener {
@@ -285,7 +319,7 @@ class QuickBenchListener implements Listener {
                 return;
             }
 
-            List<ItemStack> outputs = precraft(player.getInventory().getContents());
+            List<ItemStack> outputs = TransparentRecipe.precraft(player.getInventory().getContents());
 
             final int ROW_SIZE = 9;
             int rows = (int)Math.max(plugin.getConfig().getInt("quickBench.minSizeRows", 0), Math.ceil(outputs.size() * 1.0 / ROW_SIZE));
@@ -302,33 +336,6 @@ class QuickBenchListener implements Listener {
             // don't let, for example, place a block AND open the QuickBench..
             event.setCancelled(true);
         }
-    }
-
-    // TODO: have a pure Bukkit API fallback in case things go wrong (like in QuickBench 2.x series; uses iterator / Bukkit.getServer().getRecipesFor, etc.)
-    public List<ItemStack> precraft(ItemStack[] inputs) {
-        List<ItemStack> outputs = new ArrayList<ItemStack>();
-        int recipeCount = 0;
-
-        List opaqueRecipes = net.minecraft.server.CraftingManager.getInstance().getRecipies();
-
-        for (Object recipeObject: opaqueRecipes) {
-            net.minecraft.server.CraftingRecipe opaqueRecipe = (net.minecraft.server.CraftingRecipe)recipeObject;
-
-            try {
-                TransparentRecipe recipe = new TransparentRecipe(opaqueRecipe);
-
-                if (recipe.canCraft(inputs)) {
-                    outputs.add(recipe.getResult());
-                }
-            } catch (Exception e) {
-                plugin.log("precraft skipping recipe: "+opaqueRecipe);
-                e.printStackTrace();
-            }
-        }
-
-        plugin.log("Total recipes: " + recipeCount + ", craftable: " + outputs.size());
-
-        return outputs;
     }
 
     public List<Recipe> getRecipesForX(ItemStack item) {
@@ -508,7 +515,7 @@ class QuickBenchListener implements Listener {
 
 
         // Populate with new items, either adding (if have new crafting inputs) or removing (if took up all)
-        List<ItemStack> newItems = precraft(playerContents);
+        List<ItemStack> newItems = TransparentRecipe.precraft(playerContents);
 
         if (newItems.size() > view.getTopInventory().getSize()) {
             // TODO: improve.. but can't resize window? close and reopen
