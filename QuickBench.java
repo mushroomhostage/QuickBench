@@ -237,8 +237,10 @@ class TransparentRecipe {
         return result;
     }
 
-    /** Get whether array of item stacks has all of the recipe inputs. */
-    public boolean canCraft(final ItemStack[] inputs) {
+    /** Get whether array of item stacks has all of the recipe inputs. 
+    Returns null if not, otherwise a PrecraftingResult with output and updated inputs. 
+    */
+    public PrecraftedResult canCraft(final ItemStack[] inputs) {
         plugin.log("- testing class="+className+" result="+getResult()+" canCraft inputs " + inputs + " vs ingredientsList " + ingredientsList);
 
         // Clone so don't modify original
@@ -270,11 +272,11 @@ class TransparentRecipe {
 
             if (!have) {
                 plugin.log(" - can't craft, missing any of " + alternativeIngredients);
-                return false;
+                return null;
             }
         }
         plugin.log(" + craftable with "+inputs);
-        return true;
+        return new PrecraftedResult(getResult(), inputs);
     }
 
     /** Take an item from an inventory, returning the number of items that couldn't be taken, if any. */
@@ -346,8 +348,9 @@ class TransparentRecipe {
             try {
                 TransparentRecipe recipe = new TransparentRecipe(opaqueRecipe);
 
-                if (recipe.canCraft(inputs)) {
+                if (recipe.canCraft(inputs) != null) {   // TODO: XXX: get and save updated inventory!
                     // TODO: should we de-duplicate multiple recipes to same result? I'm thinking not, to support different ingredient inputs (positional)
+                    // (or have an option to)
                     outputs.add(recipe.getResult());
                 }
             } catch (Exception e) {
@@ -358,10 +361,23 @@ class TransparentRecipe {
 
         plugin.log("Total recipes: " + recipeCount + ", craftable: " + outputs.size());
 
+        // TODO: return PrecraftedResult s
+
         return outputs;
     }
+}
 
+class PrecraftedResult {
+    // What you get out of crafting
+    ItemStack output;
 
+    // The complete altered player inventory, with recipe inputs removed/updated
+    ItemStack[] inventory;
+
+    public PrecraftedResult(ItemStack output, ItemStack[] inventory) {
+        this.output = output;
+        this.inventory = inventory;
+    }
 }
 
 class QuickBenchListener implements Listener {
