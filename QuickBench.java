@@ -86,6 +86,7 @@ class TransparentRecipe {
             ShapelessRecipe shapelessRecipe = ((net.minecraft.server.ShapelessRecipes)opaqueRecipe).toBukkitRecipe();
             List<ItemStack> ingredientList = shapelessRecipe.getIngredientList();
 
+            // Shapeless recipes are a simple list of everything we need, 1:1
             for (ItemStack ingredient: ingredientList) {
                 if (ingredient != null) {
                     HashSet<ItemStack> innerSet = new HashSet<ItemStack>();
@@ -97,12 +98,23 @@ class TransparentRecipe {
             ShapedRecipe shapedRecipe = ((net.minecraft.server.ShapedRecipes)opaqueRecipe).toBukkitRecipe();
             Map<Character,ItemStack> ingredientMap = shapedRecipe.getIngredientMap();
 
-            // order not preserved
-            for (ItemStack ingredient: ingredientMap.values()) {
+            // Shaped recipes' order doesn't matter for us, but the count of each ingredient in the map does
+            for (Map.Entry<Character,ItemStack> entry: ingredientMap.entrySet()) {
+                char code = entry.getKey().charValue();
+                ItemStack ingredient = entry.getValue();
+
                 if (ingredient != null) {
-                    HashSet<ItemStack> innerSet = new HashSet<ItemStack>();
-                    innerSet.add(ingredient);    // no alternatives, 1-element set
-                    ingredientsSet.add(innerSet);
+                    for (String shapeLine: shapedRecipe.getShape()) {
+                        for (int i = 0; i < shapeLine.length(); i += 1) {
+                            char thisCode = shapeLine.charAt(i);
+
+                            if (thisCode == code) {
+                                HashSet<ItemStack> innerSet = new HashSet<ItemStack>();
+                                innerSet.add(ingredient);    // no alternatives, 1-element set
+                                ingredientsSet.add(innerSet);
+                            }
+                        }
+                    }
                 }
             }
         // TODO else if (className.equals("ic2.common.AdvShapelessRecipe") || className.equals("ic2.common.AdvRecipe")) {
