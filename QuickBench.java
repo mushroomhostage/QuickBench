@@ -61,6 +61,8 @@ import org.bukkit.craftbukkit.inventory.CraftItemStack;
 
 // A crafting recipe that lets you see into its ingredients!
 class TransparentRecipe {
+    static QuickBench plugin; 
+
     // Each ingredient which must be present; outer = all, inner = any, e.g. (foo OR bar) AND (baz) AND (quux)
     // The inner set is the list of alternatives; it may just have one ItemStack, or more
     // This is expressiveness (not provided by Bukkit wrappers) is necessary to support ore dictionary recipes
@@ -77,9 +79,9 @@ class TransparentRecipe {
             List<ItemStack> ingredientList = shapelessRecipe.getIngredientList();
 
             for (ItemStack ingredient: ingredientList) {
-                HashSet<ItemStack> set = new HashSet<ItemStack>();
-                set.add(ingredient);    // no alternatives, 1-element set
-                ingredientsSet.add(set);
+                HashSet<ItemStack> innerSet = new HashSet<ItemStack>();
+                innerSet.add(ingredient);    // no alternatives, 1-element set
+                ingredientsSet.add(innerSet);
             }
         } else if (opaqueRecipe instanceof net.minecraft.server.ShapedRecipes) {
             ShapedRecipe shapedRecipe = ((net.minecraft.server.ShapedRecipes)opaqueRecipe).toBukkitRecipe();
@@ -87,14 +89,99 @@ class TransparentRecipe {
 
             // order not preserved
             for (ItemStack ingredient: ingredientMap.values()) {
-                HashSet<ItemStack> set = new HashSet<ItemStack>();
-                set.add(ingredient);    // no alternatives, 1-element set
-                ingredientsSet.add(set);
+                HashSet<ItemStack> innerSet = new HashSet<ItemStack>();
+                innerSet.add(ingredient);    // no alternatives, 1-element set
+                ingredientsSet.add(innerSet);
             }
         }
     }
 
-    // TODO: canCraft()
+    /** Get whether array of item stacks has all of the recipe inputs. */
+    public boolean canCraft(final ItemStack[] inputs) {
+        plugin.log("- testing canCraft inputs " + inputs + " vs ingredientsSet " + ingredientsSet);
+
+        // Clone so don't modify original
+        ItemStack[] accum = cloneItemStacks(inputs);
+
+        // Remove items as we go, ensuring we can successfully remove everything
+        for (HashSet<ItemStack> alternativeIngredients: ingredientsSet) {
+            boolean have = false;
+
+            // Do we have any of the ingredients?
+            for (ItemStack ingredient: alternativeIngredients) {
+                int missing = takeItems(accum, ingredient);
+
+                plugin.log("  ~ taking "+ingredient+" missing="+missing);
+
+                if (missing == 0) {
+                    have = true;
+                    break;
+                }
+            }
+
+            if (!have) {
+                plugin.log(" - can't craft, missing any of " + alternativeIngredients);
+                return false;
+            }
+        }
+        plugin.log(" + craftable with "+inputs);
+        return true;
+    }
+
+    /** Take an item from an inventory, returning the number of items that couldn't be taken, if any. */
+    private static int takeItems(ItemStack[] inventory, ItemStack goners) {
+        int remaining = goners.getAmount();
+        if (remaining != 1) {
+            // we only expect ingredients to be of one item (otherwise, canCraft alternative loop is broken)
+            throw new IllegalArgumentException("unexpected quantity from takeItems: " + goners + ", remaining="+remaining+" != 1");
+        }
+    
+        int i = 0;
+
+        for (ItemStack slot: inventory) {
+            // matching item? (ignores tags)
+            if (slot != null && slot.getTypeId() == goners.getTypeId() &&
+                (goners.getDurability() == -1 || (slot.getDurability() == goners.getDurability()))) { 
+                if (remaining > slot.getAmount()) {
+                    remaining -= slot.getAmount();
+                    slot.setAmount(0);
+                } else if (remaining > 0) {
+                    slot.setAmount(slot.getAmount() - remaining);
+                    remaining = 0;
+                } else {
+                    slot.setAmount(0);
+                }
+
+                // TODO
+                /*
+                // If removed whole slot, need to explicitly clear it
+                // ItemStacks with amounts of 0 are interpreted as 1 (possible Bukkit bug?)
+                if (slot.getAmount() == 0) {
+                    player.getInventory().clear(i);
+                }*/
+            }
+
+            i += 1;
+
+            if (remaining == 0) {
+                break;
+            }
+        }
+
+        return remaining;
+    }
+
+    private static ItemStack[] cloneItemStacks(ItemStack[] original) {
+        // TODO: better way to deep copy array?
+        ItemStack[] copy = new ItemStack[original.length];
+        for (int i = 0; i < original.length; i += 1) {
+            if (original[i] != null) {
+                copy[i] = original[i].clone();
+            }
+        }
+
+        return copy;
+    }
 }
 
 class QuickBenchListener implements Listener {
@@ -411,10 +498,12 @@ class QuickBenchListener implements Listener {
         return count <= 0;
     }
 
+    // XXX: replace by TransparentRecipe
     Collection<ItemStack> getRecipeInputs(Recipe recipe) {
         return (recipe instanceof ShapedRecipe) ?  ((ShapedRecipe)recipe).getIngredientMap().values() : ((ShapelessRecipe)recipe).getIngredientList();
     }
 
+    // XXX: replace
     public ItemStack[] cloneItemStacks(ItemStack[] original) {
         // TODO: better way to deep copy array?
         ItemStack[] copy = new ItemStack[original.length];
@@ -429,6 +518,7 @@ class QuickBenchListener implements Listener {
 
 
     /** Get whether array of item stacks has all of the recipe inputs. */
+    // XXX: replace
     public boolean canCraft(final ItemStack[] inputs, Recipe recipe) {
         if (!(recipe instanceof ShapedRecipe || recipe instanceof ShapelessRecipe)) {
             // other recipes (furnace, etc.) not handled here
@@ -463,6 +553,7 @@ class QuickBenchListener implements Listener {
         return true;
     }
 
+    // XXX: replace
     // Based on FT takeItemsOnline()
     private static int takeItems(ItemStack[] inventory, ItemStack goners) {
         //ItemStack[] inventory = player.getInventory().getContents();
@@ -704,6 +795,8 @@ public class QuickBench extends JavaPlugin {
     Logger logger = Logger.getLogger("Minecraft");
 
     public void onEnable() {
+        TransparentRecipe.plugin = this;
+
         getConfig().options().copyDefaults(true);
         saveConfig();
         reloadConfig();
