@@ -68,10 +68,18 @@ class TransparentRecipe {
     // This is expressiveness (not provided by Bukkit wrappers) is necessary to support ore dictionary recipes
     HashSet<HashSet<ItemStack>> ingredientsSet;
 
+    ItemStack result;
+
     public TransparentRecipe(net.minecraft.server.CraftingRecipe/*MCP IRecipe*/ opaqueRecipe) {
-        ingredientsSet = new HashSet<HashSet<ItemStack>>();
+        // Get recipe result
+        result = new CraftItemStack(opaqueRecipe.b()); // MCP getResult()
+        // TODO: need to call ItemStack b(InventoryCrafting)! for IC2, it performs electric item charge/discharge!
+
 
         // Get recipe ingredients
+        ingredientsSet = new HashSet<HashSet<ItemStack>>();
+
+        String className = opaqueRecipe.getClass().getName();
 
         // For vanilla recipes, Bukkit's conversion wrappers are fine
         if (opaqueRecipe instanceof net.minecraft.server.ShapelessRecipes) {
@@ -93,7 +101,28 @@ class TransparentRecipe {
                 innerSet.add(ingredient);    // no alternatives, 1-element set
                 ingredientsSet.add(innerSet);
             }
+        // TODO else if (className.equals("ic2.common.AdvShapelessRecipe") || className.equals("ic2.common.AdvRecipe")) {
+        } else {
+            throw new IllegalArgumentException("Unsupported recipe class: " + className + " of " + opaqueRecipe);
         }
+
+
+        // TODO: ic2.common.AdvShapelessRecipe
+        // TODO: ic2.common.AdvRecipe
+
+        // TODO: forge.oredict.ShapedOreRecipe
+        // TODO: forge.oredict.ShapelessOreRecipe
+
+
+        // TODO: eloraam.core.CoverRecipe (RedPower)
+        // TODO: codechicken.enderstorage.EnderChestRecipe (EnderStorage)
+        // TODO: nuclearcontrol.StorageArrayRecipe (IC2 Nuclear Control 1.1.10+)
+
+    }
+
+    public ItemStack getResult() {
+        // TODO: need to call ItemStack b(InventoryCrafting)! for IC2, it performs electric item charge/discharge!
+        return result;
     }
 
     /** Get whether array of item stacks has all of the recipe inputs. */
@@ -107,8 +136,16 @@ class TransparentRecipe {
         for (HashSet<ItemStack> alternativeIngredients: ingredientsSet) {
             boolean have = false;
 
+            if (alternativeIngredients == null) {
+                continue;
+            }
+
             // Do we have any of the ingredients?
             for (ItemStack ingredient: alternativeIngredients) {
+                if (ingredient == null) {
+                    continue;
+                }
+
                 int missing = takeItems(accum, ingredient);
 
                 plugin.log("  ~ taking "+ingredient+" missing="+missing);
@@ -267,35 +304,24 @@ class QuickBenchListener implements Listener {
         }
     }
 
+    // TODO: have a pure Bukkit API fallback in case things go wrong (like in QuickBench 2.x series; uses iterator / Bukkit.getServer().getRecipesFor, etc.)
     public List<ItemStack> precraft(ItemStack[] inputs) {
         List<ItemStack> outputs = new ArrayList<ItemStack>();
-
-        Iterator<Recipe> recipes = getRecipesIteratorX();
-
-
         int recipeCount = 0;
 
-        // TODO: why does this miss some modded recipes?
-        RECIPE: while(recipes.hasNext()) {
+        List opaqueRecipes = net.minecraft.server.CraftingManager.getInstance().getRecipies();
+
+        for (Object recipeObject: opaqueRecipes) {
+            net.minecraft.server.CraftingRecipe opaqueRecipe = (net.minecraft.server.CraftingRecipe)recipeObject;
+
             try {
-                Recipe recipe = recipes.next();
+                TransparentRecipe recipe = new TransparentRecipe(opaqueRecipe);
 
-                if (recipe == null) {
-                    // null recipes, it happens!
-                    continue;
-                }
-
-                recipeCount += 1;
-
-                ItemStack result = recipe.getResult();
-                
-                plugin.log("recipe " + recipeCount + ". output = " + result);
-
-                if (canCraft(inputs, recipe)) {
-                    outputs.add(result);
+                if (recipe.canCraft(inputs)) {
+                    outputs.add(recipe.getResult());
                 }
             } catch (Exception e) {
-                plugin.log("precraft skipping recipe");
+                plugin.log("precraft skipping recipe: "+opaqueRecipe);
                 e.printStackTrace();
             }
         }
@@ -305,158 +331,11 @@ class QuickBenchListener implements Listener {
         return outputs;
     }
 
-    public Iterator<Recipe> getRecipesIteratorX() {
-        if (!plugin.getConfig().getBoolean("quickBench.bypassBukkit", true)) {
-            return Bukkit.getServer().recipeIterator();
-        }
-
-        try {
-            return bypassGetRecipesIterator();
-        } catch (Exception e) {
-            plugin.logger.warning("Failed to reflect crafting manager: " + e + ", falling back");
-            e.printStackTrace();
-            return Bukkit.getServer().recipeIterator();
-        }
-    }
-
     public List<Recipe> getRecipesForX(ItemStack item) {
-        if (!plugin.getConfig().getBoolean("quickBench.bypassBukkit", true)) {
-            return Bukkit.getServer().getRecipesFor(item);
-        }
-
-        List<Recipe> matchedRecipes = new ArrayList<Recipe>();
-
-        try {
-            Iterator<Recipe> iter = getRecipesIteratorX();
-
-            while(iter.hasNext()) {
-                Recipe recipe = iter.next();
-
-                ItemStack result = recipe.getResult();
-                if (result.getTypeId() == item.getTypeId() &&
-                    (result.getDurability() == -1 || (result.getDurability() == item.getDurability()))) {
-
-                    matchedRecipes.add(recipe);
-                }
-            }
-
-        } catch (Exception e) {
-            plugin.logger.warning("Failed to reflect recipes for: " + e + ", falling back");
-            e.printStackTrace();
-            return Bukkit.getServer().getRecipesFor(item);
-        }
-
-        return matchedRecipes;
+        // XXX: either implement, or replace with click-location-based tracking (more reliable? for charging)
+        return null;
     }
 
-    // Get "advanced" crafting recipe inputs from custom IndustrialCraft^2 AdvRecipe or AdvShapelessRecipe classes
-    private List<ItemStack> getIC2AdvRecipeInputs(net.minecraft.server.CraftingRecipe recipe) throws Exception {
-        List<ItemStack> wrappedInputs = new ArrayList<ItemStack>();
-
-        Field advRecipeInputField = recipe.getClass().getDeclaredField("input");
-
-        advRecipeInputField.setAccessible(true);
-        Object[] inputs = (Object[])advRecipeInputField.get(recipe);
-
-        for (Object input: inputs) {
-            // see ic2.common.AdvShapelessRecipe constructor for supported types
-            net.minecraft.server.ItemStack itemStack = null;
-
-            if (input instanceof net.minecraft.server.ItemStack) {
-                itemStack = (net.minecraft.server.ItemStack)input;
-            } else if (input instanceof net.minecraft.server.Block) {
-                itemStack = new net.minecraft.server.ItemStack((net.minecraft.server.Block)input, 1, -1);
-            } else if (input instanceof net.minecraft.server.Item) {
-                itemStack = new net.minecraft.server.ItemStack((net.minecraft.server.Item)input, 1, -1);
-            } else if (input instanceof Boolean) {
-                boolean hidden = ((Boolean)input).booleanValue();
-                plugin.logger.warning("IC2 hidden = " + hidden);
-                // TODO: skip if hidden?
-                continue;
-            } else if (input instanceof String) {
-                plugin.logger.warning("IC2 string = " + input);
-                // TODO: support this
-                /*
-                AdvRecipe.oreDictionaryIC2 temp = ic2.common.AdvRecipe.oreDictionaryIC2.valueOf((String)input);
-                wrappedInput = (ItemStack)(new CraftItemStack(new net.minecrtemp.getItemStack();
-                */
-                plugin.logger.warning("skipping advanced IC2 recipe");
-                return null;
-            } else {
-                throw new IllegalArgumentException("Unrecognized type in IC2 advanced recipe: " + input);
-            }
-
-            ItemStack wrappedItemStack = new CraftItemStack(itemStack);
-
-
-            wrappedInputs.add(wrappedItemStack);
-
-        }
-
-        return wrappedInputs;
-    }
-
-    // Bypass Bukkit's recipe iterator and wrap it ourself
-    public Iterator<Recipe> bypassGetRecipesIterator() throws Exception {
-        List<Recipe> wrappedRecipes = new ArrayList<Recipe>();
-
-        List rawRecipes = net.minecraft.server.CraftingManager.getInstance().getRecipies();
-
-        for (Object recipeObject: rawRecipes) {
-            net.minecraft.server.CraftingRecipe recipe = (net.minecraft.server.CraftingRecipe)recipeObject;
-
-            Recipe wrappedRecipe = null;
-            try {
-                wrappedRecipe = recipe.toBukkitRecipe();
-            } catch (Exception e) {
-                plugin.logger.warning("Failed to call toBukkitRecipe on "+recipe+", ignoring");
-                e.printStackTrace();
-            }
-
-            if (wrappedRecipe != null) {
-                // standard recipe, Bukkit can wrap it for us
-                wrappedRecipes.add(wrappedRecipe);
-                continue;
-            }
-
-            net.minecraft.server.ItemStack result = recipe.b(); // MCP getResult()
-
-            // IndustrialCraft^2 custom crafting recipe compatibility
-            // for hints see https://github.com/perky/CraftingTableII/blob/master/lukeperkin/craftingtableii/ContainerClevercraft.java getRecipeIngredients()
-            // Note we add both shapeless and shaped recipes as shapeless, since their shape doesn't matter for QuickBench!
-            String className = recipe.getClass().getName();
-            if (className.equals("ic2.common.AdvShapelessRecipe") || className.equals("ic2.common.AdvRecipe")) {
-                // TODO: do we need to restrict ourselves to avoiding i.e. macerator and extractor recipes? seems not
-
-                plugin.log("Adding IC2 recipe:  " + recipe + " for " + result);
-
-                ShapelessRecipe wrappedShapelessRecipe = new ShapelessRecipe((ItemStack)(new CraftItemStack(result)));
-
-                List<ItemStack> inputs = getIC2AdvRecipeInputs(recipe);
-
-                if (inputs != null) {
-                    for (ItemStack wrappedInput: inputs) {
-                        plugin.log("- input: " + wrappedInput);
-
-                        wrappedShapelessRecipe.addIngredient(wrappedInput.getAmount(), wrappedInput.getType(), wrappedInput.getDurability());
-                    }
-
-                    wrappedRecipes.add(wrappedShapelessRecipe);
-                }
-            } else {
-                plugin.log("Unrecognized recipe type: " + recipe + " for " + result);
-            }
-            // TODO: forge.oredict.ShapedOreRecipe
-            // TODO: forge.oredict.ShapelessOreRecipe
-
-
-            // TODO: eloraam.core.CoverRecipe (RedPower)
-            // TODO: codechicken.enderstorage.EnderChestRecipe (EnderStorage)
-            // TODO: nuclearcontrol.StorageArrayRecipe (IC2 Nuclear Control 1.1.10+)
-        }
-
-        return wrappedRecipes.iterator();
-    }
 
     /** Get whether the item stack is contained within an array of item stacks. */
     public boolean haveItems(ItemStack[] inputs, ItemStack check) {
@@ -517,83 +396,6 @@ class QuickBenchListener implements Listener {
     }
 
 
-    /** Get whether array of item stacks has all of the recipe inputs. */
-    // XXX: replace
-    public boolean canCraft(final ItemStack[] inputs, Recipe recipe) {
-        if (!(recipe instanceof ShapedRecipe || recipe instanceof ShapelessRecipe)) {
-            // other recipes (furnace, etc.) not handled here
-            // TODO: https://github.com/perky/CraftingTableII_Server/blob/master/net/minecraft/src/mod_Clevercraft.java
-            // ic2.common.AdvRecipe, ic2.common.AdvShapelessRecipe
-            return false;
-        }
-        
-        Collection<ItemStack> recipeInputs = getRecipeInputs(recipe);
-
-        plugin.log("- recipe inputs: " + recipeInputs);
-
-        // Clone so don't modify original
-        ItemStack[] accum = cloneItemStacks(inputs);
-
-        // Remove items as we go, ensuring we can successfully remove everything
-        for (ItemStack recipeInput: recipeInputs) {
-            if (recipeInput == null) {
-                continue;
-            }
-
-            int missing = takeItems(accum, recipeInput);
-
-            if (missing != 0) {
-                plugin.log(" - can't craft, missing "+missing+" of "+recipeInput);
-                return false;
-            } else {
-                // so far so good
-            }
-        }
-        plugin.log(" + craftable with "+inputs);
-        return true;
-    }
-
-    // XXX: replace
-    // Based on FT takeItemsOnline()
-    private static int takeItems(ItemStack[] inventory, ItemStack goners) {
-        //ItemStack[] inventory = player.getInventory().getContents();
-
-        int remaining = goners.getAmount();
-        int i = 0;
-
-        for (ItemStack slot: inventory) {
-            // matching item? (ignores tags)
-            if (slot != null && slot.getTypeId() == goners.getTypeId() &&
-                (goners.getDurability() == -1 || (slot.getDurability() == goners.getDurability()))) { 
-                if (remaining > slot.getAmount()) {
-                    remaining -= slot.getAmount();
-                    slot.setAmount(0);
-                } else if (remaining > 0) {
-                    slot.setAmount(slot.getAmount() - remaining);
-                    remaining = 0;
-                } else {
-                    slot.setAmount(0);
-                }
-
-                // TODO
-                /*
-                // If removed whole slot, need to explicitly clear it
-                // ItemStacks with amounts of 0 are interpreted as 1 (possible Bukkit bug?)
-                if (slot.getAmount() == 0) {
-                    player.getInventory().clear(i);
-                }*/
-            }
-
-            i += 1;
-
-            if (remaining == 0) {
-                break;
-            }
-        }
-
-        return remaining;
-    }
-
     @EventHandler(priority=EventPriority.MONITOR, ignoreCancelled=true)
     public void onInventoryClickWrapper(InventoryClickEvent event) {
         // If something goes wrong, deny the event to try to avoid duping items
@@ -649,6 +451,11 @@ class QuickBenchListener implements Listener {
         ItemStack[] playerContents = playerInventory.getContents();
 
         // Remove crafting inputs
+        plugin.logger.warning("TODO: remove inputs for "+item);
+        event.setResult(Event.Result.DENY);
+        boolean crafted = false;
+
+        /* XXX TODO - should we backtrack recipe from clicked input? or better yet, track position of click in window?!
         List<Recipe> recipes = getRecipesForX(item);
         if (recipes == null) {
             plugin.logger.warning("No recipes for "+item);
@@ -656,7 +463,6 @@ class QuickBenchListener implements Listener {
             return;
         }
 
-        boolean crafted = false;
         for (Recipe recipe: recipes) {
             if (canCraft(playerContents, recipe)) {
 
@@ -683,7 +489,8 @@ class QuickBenchListener implements Listener {
                 crafted = true;
                 break;
             }
-        }
+        }*/
+
         if (!crafted) {
             plugin.logger.warning("Failed to find matching recipe from player "+player.getName()+" for crafting "+item);
             // don't let pick up
