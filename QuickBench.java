@@ -30,7 +30,6 @@ package com.exphc.QuickBench;
 import java.util.*;
 import java.util.logging.Logger;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.Formatter;
 import java.lang.Byte;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
@@ -59,6 +58,44 @@ import net.minecraft.server.CraftingManager;
 
 import org.bukkit.craftbukkit.enchantments.CraftEnchantment;
 import org.bukkit.craftbukkit.inventory.CraftItemStack;
+
+// A crafting recipe that lets you see into its ingredients!
+class TransparentRecipe {
+    // Each ingredient which must be present; outer = all, inner = any, e.g. (foo OR bar) AND (baz) AND (quux)
+    // The inner set is the list of alternatives; it may just have one ItemStack, or more
+    // This is expressiveness (not provided by Bukkit wrappers) is necessary to support ore dictionary recipes
+    HashSet<HashSet<ItemStack>> ingredientsSet;
+
+    public TransparentRecipe(net.minecraft.server.CraftingRecipe/*MCP IRecipe*/ opaqueRecipe) {
+        ingredientsSet = new HashSet<HashSet<ItemStack>>();
+
+        // Get recipe ingredients
+
+        // For vanilla recipes, Bukkit's conversion wrappers are fine
+        if (opaqueRecipe instanceof net.minecraft.server.ShapelessRecipes) {
+            ShapelessRecipe shapelessRecipe = ((net.minecraft.server.ShapelessRecipes)opaqueRecipe).toBukkitRecipe();
+            List<ItemStack> ingredientList = shapelessRecipe.getIngredientList();
+
+            for (ItemStack ingredient: ingredientList) {
+                HashSet<ItemStack> set = new HashSet<ItemStack>();
+                set.add(ingredient);    // no alternatives, 1-element set
+                ingredientsSet.add(set);
+            }
+        } else if (opaqueRecipe instanceof net.minecraft.server.ShapedRecipes) {
+            ShapedRecipe shapedRecipe = ((net.minecraft.server.ShapedRecipes)opaqueRecipe).toBukkitRecipe();
+            Map<Character,ItemStack> ingredientMap = shapedRecipe.getIngredientMap();
+
+            // order not preserved
+            for (ItemStack ingredient: ingredientMap.values()) {
+                HashSet<ItemStack> set = new HashSet<ItemStack>();
+                set.add(ingredient);    // no alternatives, 1-element set
+                ingredientsSet.add(set);
+            }
+        }
+    }
+
+    // TODO: canCraft()
+}
 
 class QuickBenchListener implements Listener {
     QuickBench plugin;
