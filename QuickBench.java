@@ -387,10 +387,34 @@ class TransparentRecipe {
 
         plugin.log("  ++ finalResult="+rawFinalResult+" == "+finalResult);
 
+        // Post-crafting hooks:
+        // SlotCrafting onPickupFromSlot(ItemStack) = SlotResult c
+        // FMLServerHandler.instance().onItemCrafted(thePlayer, par1ItemStack, craftMatrix);
+        // ForgeHooks.onTakenFromCrafting(thePlayer, par1ItemStack, craftMatrix);
+        // hooks added in https://github.com/MinecraftForge/MinecraftForge/blob/master/forge/patches/minecraft_server/net/minecraft/src/SlotCrafting.java.patch
+        // vanilla also checks: getContainerItem, doesContainerItemLeaveCraftingGrid.. for cake recipe (milk buckets -> empty bucket)
+        // so we really should call SlotResult c(ItemStack) here
+
+        net.minecraft.server.EntityHuman entityhuman = null; // TODO: fake player? real player??
+        net.minecraft.server.IInventory inventoryExtractFrom = null; // TODO: needed?
+        int slotIndex = 0;
+        int xDisplayPosition = 0;
+        int yDisplayPosition = 0;
+
+        net.minecraft.server.SlotResult slotResult = new net.minecraft.server.SlotResult(
+            entityhuman,  // "The player that is using the GUI where this slot resides"
+            inventoryCrafting, // "The craft matrix inventory linked to this result slot"
+            inventoryExtractFrom, // "The inventory we want to extract a slot from."
+            slotIndex,  // "The index of the slot in the inventory"
+            xDisplayPosition,  // "display position of the inventory slot on the screen x axis"
+            yDisplayPosition); // "display position of the inventory slot on the screen y axis"
+
+        slotResult.c/*MCP onPickupFromSlot*/(rawFinalResult); // mutates inventoryCrafting
 
         for (net.minecraft.server.ItemStack leftoverItem: inventoryCrafting.getContents()) {
             plugin.log(" ! leftover: " + leftoverItem + " = " + new CraftItemStack(leftoverItem));
         }
+
 
         return new PrecraftedResult(finalResult, accum);
     }
@@ -456,7 +480,7 @@ class TransparentRecipe {
         // this is like 'instanceof IElectricItem', but dynamic
         boolean isElectric = IElectricItem.isInstance(rawItem);
 
-        plugin.log("is electric? " + item + " = " + isElectric + " raw="+rawItem);
+        //plugin.log("is electric? " + item + " = " + isElectric + " raw="+rawItem);
 
         return isElectric;
     }
