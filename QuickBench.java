@@ -31,8 +31,7 @@ import java.util.*;
 import java.util.logging.Logger;
 import java.util.concurrent.ConcurrentHashMap;
 import java.lang.Byte;
-import java.lang.reflect.Field;
-import java.lang.reflect.Method;
+import java.lang.reflect.*;
 import java.io.*;
 
 import org.bukkit.plugin.java.JavaPlugin;
@@ -62,6 +61,7 @@ import org.bukkit.craftbukkit.inventory.CraftItemStack;
 // A crafting recipe that lets you see into its ingredients!
 class TransparentRecipe {
     static QuickBench plugin; 
+    static Class IElectricItem;
 
     // Each ingredient which must be present; outer = all, inner = any, e.g. (foo OR bar) AND (baz) AND (quux)
     // The inner list is the alternatives; it may just have one ItemStack, or more
@@ -241,7 +241,7 @@ class TransparentRecipe {
     Returns null if not, otherwise a PrecraftingResult with output and updated inputs. 
     */
     public PrecraftedResult canCraft(final ItemStack[] inputs) {
-        plugin.log("- testing class="+className+" result="+getResult()+" canCraft inputs " + inputs + " vs ingredientsList " + ingredientsList);
+        plugin.log("- testing class="+className+" result="+describeItem(getResult())+" canCraft inputs " + inputs + " vs ingredientsList " + ingredientsList);
 
         // Clone so don't modify original
         ItemStack[] accum = cloneItemStacks(inputs);
@@ -262,7 +262,7 @@ class TransparentRecipe {
 
                 ItemStack takenItem = takeItem(accum, ingredient);
 
-                plugin.log("  ~ taking "+ingredient+" takenItem="+takenItem);
+                plugin.log("  ~ taking "+describeItem(ingredient)+" takenItem="+describeItem(takenItem));
 
                 if (takenItem != null) {
                     have = true;
@@ -287,16 +287,14 @@ class TransparentRecipe {
     private static ItemStack takeItem(ItemStack[] inventory, ItemStack matchItem) {
         if (matchItem.getAmount() != 1) {
             // we only expect ingredients to be of one item (otherwise, canCraft alternative loop is broken)
-            throw new IllegalArgumentException("unexpected quantity from takeItem: " + matchItem+ ", getAmount="+matchItem.getAmount()+" != 1");
+            throw new IllegalArgumentException("unexpected quantity from takeItem: " + describeItem(matchItem)+ ", getAmount="+matchItem.getAmount()+" != 1");
         }
     
         int i = 0;
 
         for (ItemStack slot: inventory) {
             // matching item? (ignores tags)
-            if (slot != null && slot.getTypeId() == matchItem.getTypeId() &&
-                (matchItem.getDurability() == -1 || (slot.getDurability() == matchItem.getDurability()))) { 
-
+            if (slot != null && itemMatches(slot, matchItem)) {
                 // take one and return it
                 if (slot.getAmount() == 1) {
                     inventory[i] = null;
@@ -317,6 +315,50 @@ class TransparentRecipe {
         }
 
         return null;
+    }
+
+    /** Return whether an item matches given criteria.
+    Must have same type ID. matchItem damage can be -1 to match any damage.
+    */
+    public static boolean itemMatches(ItemStack item, ItemStack matchItem) {
+        return item.getTypeId() == matchItem.getTypeId() &&
+            (matchItem.getDurability() == -1 ||
+            isElectricItem(matchItem) ||        // IC2 electric items not matched on damage, see AdvRecipe
+            (item.getDurability() == matchItem.getDurability()));
+    }
+
+    /** Return whether item is from IC2 and can hold an electric charge. */
+    public static boolean isElectricItem(ItemStack item) {
+        if (IElectricItem == null) {
+            return false;
+        }
+
+        net.minecraft.server.ItemStack rawItem = ((CraftItemStack)item).getHandle();
+
+        // this is like 'instanceof IElectricItem', but dynamic
+        boolean isElectric = IElectricItem.isInstance(rawItem.getItem());
+
+        plugin.log("is electric? " + item + " = " + isElectric + " raw="+rawItem+" getItem="+rawItem.getItem()+" class="+rawItem.getItem().getClass());
+
+        return isElectric;
+    }
+
+    /** Show human-readable description of item, for debugging purposes.
+    This is way better than ItemStack toString()
+    */
+    public static String describeItem(ItemStack item) {
+        if (item == null) {
+            return "ItemStack null";
+        }
+        String s = "ItemStack "+item.getAmount()+"x"+item.getTypeId()+":"+item.getDurability()+" ("+item.getType()+")";
+        if (!(item instanceof CraftItemStack)) {
+            return s + " (not CraftItemStack!)";
+        } else {
+            net.minecraft.server.ItemStack realItem = ((CraftItemStack)item).getHandle();
+            s += " tag="+realItem.tag; // TODO: dump
+
+            return s;
+        }
     }
 
     private static ItemStack[] cloneItemStacks(ItemStack[] original) {
@@ -463,47 +505,6 @@ class QuickBenchListener implements Listener {
     public List<Recipe> getRecipesForX(ItemStack item) {
         // XXX: either implement, or replace with click-location-based tracking (more reliable? for charging)
         return null;
-    }
-
-
-    /** Get whether the item stack is contained within an array of item stacks. */
-    public boolean haveItems(ItemStack[] inputs, ItemStack check) {
-        if (check == null) {    
-            // everyone has nothing
-            return true;
-        }
-
-        int type = check.getTypeId();
-        short damage = check.getDurability();
-        int count = check.getAmount();
-
-        for (ItemStack input: inputs) {
-            if (input == null) {
-                continue;
-            }
-
-            // match types and damage
-            if (input.getTypeId() != type) {
-                continue;
-            }
-
-            if (damage != -1 && damage != input.getDurability()) {
-                continue;
-            }
-
-            // ignore enchantments
-
-            // consume what we need from what they have
-            if (input.getAmount() >= count) {
-                count -= input.getAmount();
-                if (count <= 0) {
-                    break;
-                }
-            }
-        }
-
-        // if matched everything, and then some
-        return count <= 0;
     }
 
     // XXX: replace by TransparentRecipe
@@ -732,6 +733,17 @@ public class QuickBench extends JavaPlugin {
 
     public void onEnable() {
         TransparentRecipe.plugin = this;
+  
+        // IC2's electric item interface, for items that can be charged
+        boolean hasElectricItem = true;
+        try {
+            TransparentRecipe.IElectricItem = Class.forName("ic2.api.IElectricItem");
+        } catch (ClassNotFoundException e) {
+            hasElectricItem = false;
+        }
+        if (hasElectricItem) {
+            log("Found ic2.api.IElectricItem: " + TransparentRecipe.IElectricItem);
+        }
 
         getConfig().options().copyDefaults(true);
         saveConfig();
