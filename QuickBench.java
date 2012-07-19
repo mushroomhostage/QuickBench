@@ -66,10 +66,8 @@ class TransparentRecipe {
     // Each ingredient which must be present; outer = all, inner = any, e.g. (foo OR bar) AND (baz) AND (quux)
     // The inner list is the alternatives; it may just have one ItemStack, or more
     // This is expressiveness (not provided by Bukkit wrappers) is necessary to support ore dictionary recipes
+    // There may be nulls -- which are skipped during matching, but used for ordering on the grid
     ArrayList<ArrayList<ItemStack>> ingredientsList;
-
-    // List of each ingredient in ingredientsList and where it should be located in the crafting matrix
-    ArrayList<Integer> ingredientsGridLocations;
 
     // Crafting result output
     ItemStack result;
@@ -87,8 +85,6 @@ class TransparentRecipe {
         // Get recipe ingredients
         ingredientsList = new ArrayList<ArrayList<ItemStack>>();
 
-        ingredientsGridLocations = new ArrayList<Integer>();
-
         className = opaqueRecipe.getClass().getName();
 
         // For vanilla recipes, Bukkit's conversion wrappers are fine
@@ -97,16 +93,11 @@ class TransparentRecipe {
             List<ItemStack> ingredientList = shapelessRecipe.getIngredientList();
 
             // Shapeless recipes are a simple list of everything we need, 1:1
-            int at = 0;
             for (ItemStack ingredient: ingredientList) {
                 if (ingredient != null) {
                     ArrayList<ItemStack> innerList = new ArrayList<ItemStack>();
                     innerList.add(ingredient);    // no alternatives, 1-element set
                     ingredientsList.add(innerList);
-
-                    // just put right after the other, sequentially, order doesn't matter
-                    ingredientsGridLocations.add(at);
-                    at += 1;
                 }
             }
         } else if (opaqueRecipe instanceof net.minecraft.server.ShapedRecipes) {
@@ -114,28 +105,25 @@ class TransparentRecipe {
             Map<Character,ItemStack> ingredientMap = shapedRecipe.getIngredientMap();
 
             // Shaped recipes' order doesn't matter for us, but the count of each ingredient in the map does
-            int at = 0;
             for (String shapeLine: shapedRecipe.getShape()) {
                 for (int i = 0; i < shapeLine.length(); i += 1) {
-                    at += 1;
                     char code = shapeLine.charAt(i);
                     if (code == ' ') {
-                        // placeholder
+                        // positional placeholder
+                        ingredientsList.add(null);
                         continue;
                     }
 
                     ItemStack ingredient = ingredientMap.get(code);
                     if (ingredient == null) {
-                        // placeholder
+                        // positional placeholder
+                        ingredientsList.add(null);
                         continue;
                     }
 
                     ArrayList<ItemStack> innerList = new ArrayList<ItemStack>();
                     innerList.add(ingredient);    // no alternatives, 1-element set
                     ingredientsList.add(innerList);
-
-                    // Add in this order..
-                    ingredientsGridLocations.add(at);
                 }
             }
         } else if (className.equals("forge.oredict.ShapedOreRecipe")) {
@@ -166,6 +154,12 @@ class TransparentRecipe {
                     for (net.minecraft.server.ItemStack alternative: (ArrayList<net.minecraft.server.ItemStack>)input) {
                         innerList.add(new CraftItemStack(alternative));
                     }
+                } else if (input == null) {
+                    // positional placeholder
+                    ingredientsList.add(null);
+                    continue;
+                } else {
+                    throw new IllegalArgumentException("forge.oredict.ShapedOreRecipe unknown input: " + input + ", in "+inputs);
                 }
 
                 ingredientsList.add(innerList);
@@ -194,6 +188,8 @@ class TransparentRecipe {
                     for (net.minecraft.server.ItemStack alternative: (ArrayList<net.minecraft.server.ItemStack>)input) {
                         innerList.add(new CraftItemStack(alternative));
                     }
+                } else {
+                    throw new IllegalArgumentException("forge.oredict.ShapelessOreRecipe unknown input: " + input + ", in "+inputs);
                 }
                 ingredientsList.add(innerList);
             }
@@ -266,6 +262,7 @@ class TransparentRecipe {
             boolean have = false;
 
             if (alternativeIngredients == null) {
+                // positional placeholder, we don't care
                 continue;
             }
 
