@@ -260,14 +260,15 @@ class TransparentRecipe {
                     continue;
                 }
 
-                int missing = takeItems(accum, ingredient);
+                ItemStack takenItem = takeItem(accum, ingredient);
 
-                plugin.log("  ~ taking "+ingredient+" missing="+missing);
+                plugin.log("  ~ taking "+ingredient+" takenItem="+takenItem);
 
-                if (missing == 0) {
+                if (takenItem != null) {
                     have = true;
                     break;
                 }
+                // TODO: add to 'taken items'
             }
 
             if (!have) {
@@ -276,50 +277,46 @@ class TransparentRecipe {
             }
         }
         plugin.log(" + craftable with "+inputs);
-        return new PrecraftedResult(getResult(), inputs);
+        return new PrecraftedResult(getResult(), accum);
     }
 
-    /** Take an item from an inventory, returning the number of items that couldn't be taken, if any. */
-    private static int takeItems(ItemStack[] inventory, ItemStack goners) {
-        int remaining = goners.getAmount();
-        if (remaining != 1) {
+    /** Take an item from an inventory.
+    Mutates inventory, removing it from the stack.
+    Returns the taken item. 
+    */
+    private static ItemStack takeItem(ItemStack[] inventory, ItemStack matchItem) {
+        if (matchItem.getAmount() != 1) {
             // we only expect ingredients to be of one item (otherwise, canCraft alternative loop is broken)
-            throw new IllegalArgumentException("unexpected quantity from takeItems: " + goners + ", remaining="+remaining+" != 1");
+            throw new IllegalArgumentException("unexpected quantity from takeItem: " + matchItem+ ", getAmount="+matchItem.getAmount()+" != 1");
         }
     
         int i = 0;
 
         for (ItemStack slot: inventory) {
             // matching item? (ignores tags)
-            if (slot != null && slot.getTypeId() == goners.getTypeId() &&
-                (goners.getDurability() == -1 || (slot.getDurability() == goners.getDurability()))) { 
-                if (remaining > slot.getAmount()) {
-                    remaining -= slot.getAmount();
-                    slot.setAmount(0);
-                } else if (remaining > 0) {
-                    slot.setAmount(slot.getAmount() - remaining);
-                    remaining = 0;
+            if (slot != null && slot.getTypeId() == matchItem.getTypeId() &&
+                (matchItem.getDurability() == -1 || (slot.getDurability() == matchItem.getDurability()))) { 
+
+                // take one and return it
+                if (slot.getAmount() == 1) {
+                    inventory[i] = null;
                 } else {
-                    slot.setAmount(0);
+                    slot.setAmount(slot.getAmount() - 1);
                 }
 
-                // TODO
-                /*
-                // If removed whole slot, need to explicitly clear it
-                // ItemStacks with amounts of 0 are interpreted as 1 (possible Bukkit bug?)
-                if (slot.getAmount() == 0) {
-                    player.getInventory().clear(i);
-                }*/
+                // TODO: please preserve NBT :( XXX test with IC2 charged items
+                // This is needed so that the electric item is matched by id only, but you get it back with the charge tags, too
+                // (returned result has more information than matchItem you're looking for)
+                CraftItemStack takenItem = new CraftItemStack(slot);
+                takenItem.setAmount(1);
+
+                return takenItem;
             }
 
             i += 1;
-
-            if (remaining == 0) {
-                break;
-            }
         }
 
-        return remaining;
+        return null;
     }
 
     private static ItemStack[] cloneItemStacks(ItemStack[] original) {
