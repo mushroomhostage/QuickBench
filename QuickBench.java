@@ -301,9 +301,7 @@ class TransparentRecipe {
     /** Get whether array of item stacks has all of the recipe inputs. 
     Returns null if not, otherwise a PrecraftingResult with output and updated inputs. 
     */
-    public PrecraftedResult canCraft(Player player) {
-        final ItemStack[] inputs = player.getInventory().getContents();
-
+    public PrecraftedResult canCraft(final ItemStack[] inputs) {
         plugin.log("- testing class="+className+" w="+width+" outputMatch="+describeItem(outputMatch)+" inputs=" + inputs + " vs ingredientsList=" + ingredientsList);
 
         // Clone inventory so don't modify original - but we'll modify accum, taking away what we need for crafting
@@ -527,7 +525,7 @@ class TransparentRecipe {
     }
 
     /** Return all items which can be crafted using given inputs from player. */
-    public static List<PrecraftedResult> precraft(Player player) {
+    public static List<PrecraftedResult> precraft(final ItemStack[] inputs) {
         List<PrecraftedResult> outputs = new ArrayList<PrecraftedResult>();
         int recipeCount = 0;
 
@@ -540,7 +538,7 @@ class TransparentRecipe {
             try {
                 TransparentRecipe recipe = new TransparentRecipe(opaqueRecipe);
 
-                PrecraftedResult precraftedResult = recipe.canCraft(player);
+                PrecraftedResult precraftedResult = recipe.canCraft(inputs);
 
                 if (precraftedResult != null) { 
                     // TODO: should we de-duplicate multiple recipes to same result? I'm thinking not, to support different ingredient inputs (positional)
@@ -647,7 +645,7 @@ class QuickBenchListener implements Listener {
                 return;
             }
 
-            List<PrecraftedResult> precraftedResults = TransparentRecipe.precraft(player);
+            List<PrecraftedResult> precraftedResults = TransparentRecipe.precraft(player.getInventory().getContents());
 
             final int ROW_SIZE = 9;
             int rows = (int)Math.max(plugin.getConfig().getInt("quickBench.minSizeRows", 0), Math.ceil(precraftedResults .size() * 1.0 / ROW_SIZE));
