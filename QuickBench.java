@@ -389,6 +389,8 @@ class TransparentRecipe {
 
         plugin.log("  ++ finalResult="+rawFinalResult+" == "+finalResult);
 
+/* TODO: call with fake player so real player doesn't get empty buckets!
+
         // Post-crafting hooks:
         // SlotCrafting onPickupFromSlot(ItemStack) = SlotResult c
         // FMLServerHandler.instance().onItemCrafted(thePlayer, par1ItemStack, craftMatrix);
@@ -411,11 +413,12 @@ class TransparentRecipe {
             xDisplayPosition,  // "display position of the inventory slot on the screen x axis"
             yDisplayPosition); // "display position of the inventory slot on the screen y axis"
 
-        slotResult.c/*MCP onPickupFromSlot*/(rawFinalResult); // mutates inventoryCrafting
+        slotResult.c(rawFinalResult); // MCP onPickupFromSlot - mutates inventoryCrafting
 
         for (net.minecraft.server.ItemStack leftoverItem: inventoryCrafting.getContents()) {
             plugin.log(" ! leftover: " + leftoverItem + " = " + new CraftItemStack(leftoverItem));
         }
+        */
 
 
         return new PrecraftedResult(finalResult, accum);
