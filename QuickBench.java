@@ -198,6 +198,8 @@ class TransparentRecipe {
             // IndustrialCraft^2 shapeless and shaped recipes have the same ingredients list
             // This is for 1.97 - for 1.95b see QuickBench 2.1
 
+            boolean hidden = false;
+
             Object[] inputs = null;
             try {
                 Field field = opaqueRecipe.getClass().getDeclaredField("input");
@@ -224,6 +226,15 @@ class TransparentRecipe {
                     }
                 } else if (input instanceof net.minecraft.server.ItemStack) {
                     innerList.add(new CraftItemStack((net.minecraft.server.ItemStack)input));
+                } else if (input instanceof Boolean) {  // TODO: not detected?
+                    hidden = ((Boolean)input).booleanValue();
+                    plugin.log("hidden = " + hidden); // TODO: option to skip secret hidden recipes (UU matter, nukes)
+                } else if (input == null) {
+                    // positional placeholder
+                    ingredientsList.add(null);
+                    continue;
+                } else {
+                    throw new IllegalArgumentException("ic2.common.AdvRecipe unknown input: " + input + ", in "+inputs);
                 }
 
                 // and also public ItemStack b(InventoryCrafting inventorycrafting) = getCraftingResult in IC2 - it transfers charge to/from electric items
