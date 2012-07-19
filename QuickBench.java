@@ -89,6 +89,8 @@ class TransparentRecipe {
         // Get recipe ingredients
         ingredientsList = new ArrayList<ArrayList<ItemStack>>();
 
+        width = 3; // assume on 3x3 grid for shapeless recipes
+
         className = opaqueRecipe.getClass().getName();
 
         // For vanilla recipes, Bukkit's conversion wrappers are fine
@@ -340,6 +342,14 @@ class TransparentRecipe {
             }
         }
         plugin.log(" + craftable with "+inputs);
+
+        int size = ingredientsList.size();
+        int height = (int)(Math.ceil(size * 1.0 / width));
+
+        plugin.log(" + size "+size+" = "+width+"x"+height);
+        
+        net.minecraft.server.InventoryCrafting inventoryCrafting = new net.minecraft.server.InventoryCrafting(null, width, height);
+
         return new PrecraftedResult(getResult(), accum);
     }
 
