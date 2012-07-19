@@ -527,8 +527,8 @@ class TransparentRecipe {
     }
 
     /** Return all items which can be crafted using given inputs from player. */
-    public static List<ItemStack> precraft(Player player) {
-        List<ItemStack> outputs = new ArrayList<ItemStack>();
+    public static List<PrecraftedResult> precraft(Player player) {
+        List<PrecraftedResult> outputs = new ArrayList<PrecraftedResult>();
         int recipeCount = 0;
 
         // TODO: have a pure Bukkit API fallback in case things go wrong (like in QuickBench 2.x series; uses iterator / Bukkit.getServer().getRecipesFor, etc.)
@@ -545,7 +545,7 @@ class TransparentRecipe {
                 if (precraftedResult != null) { 
                     // TODO: should we de-duplicate multiple recipes to same result? I'm thinking not, to support different ingredient inputs (positional)
                     // (or have an option to)
-                    outputs.add(precraftedResult.output);
+                    outputs.add(precraftedResult);
                 }
                 // TODO: XXX: get and save updated inventory! precraftedResult.inventory
                 // need to return any items back to the user, for example: vanilla cake, RP2 wool card, diamond drawplate
@@ -556,8 +556,6 @@ class TransparentRecipe {
         }
 
         plugin.log("Total recipes: " + recipeCount + ", craftable: " + outputs.size());
-
-        // TODO: return PrecraftedResult s
 
         return outputs;
     }
@@ -574,13 +572,13 @@ class DeafContainer extends net.minecraft.server.Container {
 class PrecraftedResult {
     // What you get out of crafting
     // This is the computed output from getCraftingResult
-    ItemStack output;
+    ItemStack computedOutput;
 
     // The complete altered player inventory, with recipe inputs removed/updated
     ItemStack[] inventory;
 
-    public PrecraftedResult(ItemStack output, ItemStack[] inventory) {
-        this.output = output;
+    public PrecraftedResult(ItemStack computedOutput, ItemStack[] inventory) {
+        this.computedOutput = computedOutput;
         this.inventory = inventory;
     }
 }
@@ -649,16 +647,16 @@ class QuickBenchListener implements Listener {
                 return;
             }
 
-            List<ItemStack> outputs = TransparentRecipe.precraft(player);
+            List<PrecraftedResult> precraftedResults = TransparentRecipe.precraft(player);
 
             final int ROW_SIZE = 9;
-            int rows = (int)Math.max(plugin.getConfig().getInt("quickBench.minSizeRows", 0), Math.ceil(outputs.size() * 1.0 / ROW_SIZE));
+            int rows = (int)Math.max(plugin.getConfig().getInt("quickBench.minSizeRows", 0), Math.ceil(precraftedResults .size() * 1.0 / ROW_SIZE));
 
             // Note: >54 still shows dividing line on client, but can interact
             Inventory inventory = Bukkit.createInventory(player, ROW_SIZE * rows, QUICKBENCH_TITLE);
 
-            for (int i = 0; i < Math.min(outputs.size(), inventory.getSize()); i += 1) {
-                inventory.setItem(i, outputs.get(i));
+            for (int i = 0; i < Math.min(precraftedResults.size(), inventory.getSize()); i += 1) {
+                inventory.setItem(i, precraftedResults.get(i).computedOutput);
             }
 
             player.openInventory(inventory);
@@ -780,6 +778,8 @@ class QuickBenchListener implements Listener {
             return;
         }
 
+        /* TODO
+
         // add to player inventory when clicked
         HashMap<Integer,ItemStack> overflow = view.getBottomInventory().addItem(item);
 
@@ -799,6 +799,7 @@ class QuickBenchListener implements Listener {
         }
 
         view.getTopInventory().setContents(itemStackArray(newItems));
+        */
 
         // don't let pick up
         event.setResult(Event.Result.DENY);
