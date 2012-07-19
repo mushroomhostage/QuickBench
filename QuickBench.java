@@ -301,7 +301,9 @@ class TransparentRecipe {
     /** Get whether array of item stacks has all of the recipe inputs. 
     Returns null if not, otherwise a PrecraftingResult with output and updated inputs. 
     */
-    public PrecraftedResult canCraft(final ItemStack[] inputs) {
+    public PrecraftedResult canCraft(Player player) {
+        final ItemStack[] inputs = player.getInventory().getContents();
+
         plugin.log("- testing class="+className+" w="+width+" outputMatch="+describeItem(outputMatch)+" inputs=" + inputs + " vs ingredientsList=" + ingredientsList);
 
         // Clone inventory so don't modify original - but we'll modify accum, taking away what we need for crafting
@@ -395,7 +397,7 @@ class TransparentRecipe {
         // vanilla also checks: getContainerItem, doesContainerItemLeaveCraftingGrid.. for cake recipe (milk buckets -> empty bucket)
         // so we really should call SlotResult c(ItemStack) here
 
-        net.minecraft.server.EntityHuman entityhuman = null; // TODO: fake player? real player??
+        net.minecraft.server.EntityHuman entityhuman = ((org.bukkit.craftbukkit.entity.CraftPlayer)player).getHandle();
         net.minecraft.server.IInventory inventoryExtractFrom = null; // TODO: needed?
         int slotIndex = 0;
         int xDisplayPosition = 0;
@@ -521,8 +523,8 @@ class TransparentRecipe {
         return copy;
     }
 
-    /** Return all items which can be crafted using given inputs. */
-    public static List<ItemStack> precraft(ItemStack[] inputs) {
+    /** Return all items which can be crafted using given inputs from player. */
+    public static List<ItemStack> precraft(Player player) {
         List<ItemStack> outputs = new ArrayList<ItemStack>();
         int recipeCount = 0;
 
@@ -535,7 +537,7 @@ class TransparentRecipe {
             try {
                 TransparentRecipe recipe = new TransparentRecipe(opaqueRecipe);
 
-                PrecraftedResult precraftedResult = recipe.canCraft(inputs);
+                PrecraftedResult precraftedResult = recipe.canCraft(player);
 
                 if (precraftedResult != null) { 
                     // TODO: should we de-duplicate multiple recipes to same result? I'm thinking not, to support different ingredient inputs (positional)
@@ -644,7 +646,7 @@ class QuickBenchListener implements Listener {
                 return;
             }
 
-            List<ItemStack> outputs = TransparentRecipe.precraft(player.getInventory().getContents());
+            List<ItemStack> outputs = TransparentRecipe.precraft(player);
 
             final int ROW_SIZE = 9;
             int rows = (int)Math.max(plugin.getConfig().getInt("quickBench.minSizeRows", 0), Math.ceil(outputs.size() * 1.0 / ROW_SIZE));
@@ -785,7 +787,7 @@ class QuickBenchListener implements Listener {
 
 
         // Populate with new items, either adding (if have new crafting inputs) or removing (if took up all)
-        List<ItemStack> newItems = TransparentRecipe.precraft(playerContents);
+        List<ItemStack> newItems = TransparentRecipe.precraft((Player)player);
 
         if (newItems.size() > view.getTopInventory().getSize()) {
             // TODO: improve.. but can't resize window? close and reopen
