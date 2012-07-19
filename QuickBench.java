@@ -73,8 +73,10 @@ class TransparentRecipe {
     // This is used to shape the 1-dimensional ingredientsList into a 2-dimensional matrix
     int width;
 
-    // Crafting result output
-    ItemStack result;
+    // Crafting result output for matching - this is NOT computed, and should only be used for matching!
+    // Not for getting the item made after crafting - for that, see canCraft PrecraftedResult output
+    // i.e., this is an _input_ to searching the recipe's output, not the _output_ of crafting itself
+    ItemStack outputMatch;
 
     // Name of recipe class for debugging
     String className;
@@ -87,10 +89,8 @@ class TransparentRecipe {
 
         this.opaqueRecipe = opaqueRecipe;
 
-        // Get recipe result
-        result = new CraftItemStack(opaqueRecipe.b()); // MCP getResult()
-        // TODO: need to call ItemStack b(InventoryCrafting)! for IC2, it performs electric item charge/discharge!
-
+        // Get recipe result - for matching only (not for adding, for that again see PrecraftedResult)
+        outputMatch = new CraftItemStack(opaqueRecipe.b()); // MCP getResult()
 
         // Get recipe ingredients
         ingredientsList = new ArrayList<ArrayList<ItemStack>>();
@@ -145,7 +145,7 @@ class TransparentRecipe {
                 field.setAccessible(true);
                 width = field.getInt(opaqueRecipe);
             } catch (Exception e) {
-                plugin.logger.warning("Failed to reflect on net.minecraft.server.ShapedRecipes width for "+result);
+                plugin.logger.warning("Failed to reflect on net.minecraft.server.ShapedRecipes width for "+outputMatch);
                 e.printStackTrace();
                 throw new IllegalArgumentException(e);
             }
@@ -157,7 +157,7 @@ class TransparentRecipe {
                 field.setAccessible(true);
                 inputs = (Object[])field.get(opaqueRecipe);
             } catch (Exception e) {
-                plugin.logger.warning("Failed to reflect on forge.oredict.ShapedOreRecipe for "+result);
+                plugin.logger.warning("Failed to reflect on forge.oredict.ShapedOreRecipe for "+outputMatch);
                 e.printStackTrace();
                 throw new IllegalArgumentException(e);
             }
@@ -194,7 +194,7 @@ class TransparentRecipe {
                 field.setAccessible(true);
                 width = field.getInt(opaqueRecipe);
             } catch (Exception e) {
-                plugin.logger.warning("Failed to reflect on forge.oredict.ShapedOreRecipe width for "+result);
+                plugin.logger.warning("Failed to reflect on forge.oredict.ShapedOreRecipe width for "+outputMatch);
                 e.printStackTrace();
                 throw new IllegalArgumentException(e);
             }
@@ -206,7 +206,7 @@ class TransparentRecipe {
                 field.setAccessible(true);
                 inputs = (ArrayList)field.get(opaqueRecipe);
             } catch (Exception e) {
-                plugin.logger.warning("Failed to reflect on forge.oredict.ShapelessOreRecipe for "+result);
+                plugin.logger.warning("Failed to reflect on forge.oredict.ShapelessOreRecipe for "+outputMatch);
                 e.printStackTrace();
                 throw new IllegalArgumentException(e);
             }
@@ -240,7 +240,7 @@ class TransparentRecipe {
                 field.setAccessible(true);
                 inputs = (Object[])field.get(opaqueRecipe);
             } catch (Exception e) {
-                plugin.logger.warning("Failed to reflect on ic2.common.AdvRecipe for "+result);
+                plugin.logger.warning("Failed to reflect on ic2.common.AdvRecipe for "+outputMatch);
                 e.printStackTrace();
                 throw new IllegalArgumentException(e);
             }
@@ -283,7 +283,7 @@ class TransparentRecipe {
                     field.setAccessible(true);
                     width = field.getInt(opaqueRecipe);
                 } catch (Exception e) {
-                    plugin.logger.warning("Failed to reflect on ic2.common.AdvRecipe width for "+result);
+                    plugin.logger.warning("Failed to reflect on ic2.common.AdvRecipe width for "+outputMatch);
                     e.printStackTrace();
                     throw new IllegalArgumentException(e);
                 }
@@ -298,19 +298,11 @@ class TransparentRecipe {
 
     }
 
-
-    public ItemStack getResult() {
-        // TODO: need to call ItemStack b(InventoryCrafting)! for IC2, it performs electric item charge/discharge!
-        // = the post-crafting hook, MCP IRecipe: ItemStack getCraftingResult(InventoryCrafting inventorycrafting)
-        // not only MCP boolean matches(InventoryCrafting inventorycrafting);
-        return result;
-    }
-
     /** Get whether array of item stacks has all of the recipe inputs. 
     Returns null if not, otherwise a PrecraftingResult with output and updated inputs. 
     */
     public PrecraftedResult canCraft(final ItemStack[] inputs) {
-        plugin.log("- testing class="+className+" w="+width+" result="+describeItem(getResult())+" inputs=" + inputs + " vs ingredientsList=" + ingredientsList);
+        plugin.log("- testing class="+className+" w="+width+" outputMatch="+describeItem(outputMatch)+" inputs=" + inputs + " vs ingredientsList=" + ingredientsList);
 
         // Clone inventory so don't modify original - but we'll modify accum, taking away what we need for crafting
         ItemStack[] accum = cloneItemStacks(inputs);
@@ -338,6 +330,8 @@ class TransparentRecipe {
 
                 plugin.log("  ~ taking "+describeItem(ingredient)+" takenItem="+describeItem(takenItem));
                 // TODO: ensure taken item has all important tags - test IC2 lapotron crafting, should take energy crystal with charge right? XXX
+                // TODO: appears not - tag loss? try crafting fully charged energy crystal (30241:1) into lapotron - should get partly charged 30240:23
+                // not discharged :27 -> :26
 
                 if (takenItem != null) {
                     // Take it!
@@ -381,11 +375,13 @@ class TransparentRecipe {
         }
 
         // .. and feed it to the recipe to get the actual result
-        net.minecraft.server.ItemStack finalResult = opaqueRecipe.b/*MCP getCraftingResult*/(inventoryCrafting);
+        net.minecraft.server.ItemStack rawFinalResult = opaqueRecipe.b/*MCP getCraftingResult*/(inventoryCrafting);
 
-        plugin.log("  ++ finalResult="+finalResult+" == "+new CraftItemStack(finalResult));
+        ItemStack finalResult = new CraftItemStack(rawFinalResult);
 
-        return new PrecraftedResult(getResult(), accum);
+        plugin.log("  ++ finalResult="+rawFinalResult+" == "+finalResult);
+
+        return new PrecraftedResult(finalResult, accum);
     }
 
     /** Take an item from an inventory.
@@ -495,11 +491,15 @@ class TransparentRecipe {
             try {
                 TransparentRecipe recipe = new TransparentRecipe(opaqueRecipe);
 
-                if (recipe.canCraft(inputs) != null) {   // TODO: XXX: get and save updated inventory!
+                PrecraftedResult precraftedResult = recipe.canCraft(inputs);
+
+                if (precraftedResult != null) { 
                     // TODO: should we de-duplicate multiple recipes to same result? I'm thinking not, to support different ingredient inputs (positional)
                     // (or have an option to)
-                    outputs.add(recipe.getResult());
+                    outputs.add(precraftedResult.output);
                 }
+                // TODO: XXX: get and save updated inventory! precraftedResult.inventory
+                // need to return any items back to the user, for example: vanilla cake, RP2 wool card, diamond drawplate
             } catch (Exception e) {
                 plugin.log("precraft skipping recipe: "+opaqueRecipe);
                 e.printStackTrace();
@@ -524,6 +524,7 @@ class DeafContainer extends net.minecraft.server.Container {
 
 class PrecraftedResult {
     // What you get out of crafting
+    // This is the computed output from getCraftingResult
     ItemStack output;
 
     // The complete altered player inventory, with recipe inputs removed/updated
