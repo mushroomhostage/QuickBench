@@ -377,9 +377,20 @@ class TransparentRecipe {
         // .. and feed it to the recipe to get the actual result
         net.minecraft.server.ItemStack rawFinalResult = opaqueRecipe.b/*MCP getCraftingResult*/(inventoryCrafting);
 
+        if (rawFinalResult == null) {
+            // This shouldn't happen.. it means we matched the recipe inputs, but then tried to arrange
+            // them on the grid and the recipe said it didn't know what we were talking about..
+            throw new IllegalArgumentException("IRecipe getCraftingResult("+inventoryCrafting+") unexpectedly returned null trying to craft"+outputMatch);
+        }
+
         ItemStack finalResult = new CraftItemStack(rawFinalResult);
 
         plugin.log("  ++ finalResult="+rawFinalResult+" == "+finalResult);
+
+
+        for (net.minecraft.server.ItemStack leftoverItem: inventoryCrafting.getContents()) {
+            plugin.log(" ! leftover: " + leftoverItem + " = " + new CraftItemStack(leftoverItem));
+        }
 
         return new PrecraftedResult(finalResult, accum);
     }
@@ -434,6 +445,12 @@ class TransparentRecipe {
     /** Return whether item is from IC2 and can hold an electric charge. */
     public static boolean isElectricItem(ItemStack item) {
         if (IElectricItem == null) {
+            // IC2 isn't installed
+            return false;
+        }
+
+        if (!(item instanceof CraftItemStack)) {
+            // we can't tell.. the item came from a plugin :(
             return false;
         }
 
