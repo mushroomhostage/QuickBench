@@ -525,8 +525,8 @@ class TransparentRecipe {
     }
 
     /** Return all items which can be crafted using given inputs from player. */
-    public static List<PrecraftedResult> precraft(final ItemStack[] inputs) {
-        List<PrecraftedResult> outputs = new ArrayList<PrecraftedResult>();
+    public static ArrayList<PrecraftedResult> precraft(final ItemStack[] inputs) {
+        ArrayList<PrecraftedResult> outputs = new ArrayList<PrecraftedResult>();
         int recipeCount = 0;
 
         // TODO: have a pure Bukkit API fallback in case things go wrong (like in QuickBench 2.x series; uses iterator / Bukkit.getServer().getRecipesFor, etc.)
@@ -579,6 +579,10 @@ class PrecraftedResult {
         this.computedOutput = computedOutput;
         this.inventory = inventory;
     }
+
+    public String toString() {
+        return "PrecraftedResult computedOutput="+computedOutput+", inventory="+inventory;
+    }
 }
 
 class QuickBenchListener implements Listener {
@@ -590,6 +594,9 @@ class QuickBenchListener implements Listener {
     final static Enchantment QUICKBENCH_ITEM_TAG = Enchantment.FIRE_ASPECT;
     final String QUICKBENCH_TITLE;
 
+    // Map from Player UUID to array list of precrafted results being displayed to the user
+    Map<UUID, ArrayList<PrecraftedResult>> openPrecraftedResults;
+
     public QuickBenchListener(QuickBench plugin) {
         this.plugin = plugin;
 
@@ -597,6 +604,8 @@ class QuickBenchListener implements Listener {
         QUICKBENCH_BLOCK_DATA = (byte)plugin.getConfig().getInt("quickBench.blockData", 1);
         QUICKBENCH_ITEM_ID = plugin.getConfig().getInt("quickBench.itemId", Material.WORKBENCH.getId());
         QUICKBENCH_TITLE = plugin.getConfig().getString("quickBench.title", "QuickBench");
+
+        openPrecraftedResults = new HashMap<UUID, ArrayList<PrecraftedResult>>();
 
         loadRecipe();
 
@@ -645,7 +654,9 @@ class QuickBenchListener implements Listener {
                 return;
             }
 
-            List<PrecraftedResult> precraftedResults = TransparentRecipe.precraft(player.getInventory().getContents());
+            ArrayList<PrecraftedResult> precraftedResults = TransparentRecipe.precraft(player.getInventory().getContents());
+
+            openPrecraftedResults.put(player.getUniqueId(), precraftedResults);
 
             final int ROW_SIZE = 9;
             int rows = (int)Math.max(plugin.getConfig().getInt("quickBench.minSizeRows", 0), Math.ceil(precraftedResults .size() * 1.0 / ROW_SIZE));
@@ -727,6 +738,22 @@ class QuickBenchListener implements Listener {
 
         Inventory playerInventory = view.getBottomInventory();
         ItemStack[] playerContents = playerInventory.getContents();
+
+        ArrayList<PrecraftedResult> precraftedResults = openPrecraftedResults.get(player.getUniqueId());
+        if (precraftedResults == null) {
+            plugin.logger.warning("Player "+player+" clicked without an open QuickBench");
+            event.setResult(Event.Result.DENY);
+            return;
+        }
+
+        PrecraftedResult precraftedResult = precraftedResults.get(event.getRawSlot());
+        if (precraftedResult == null) {
+            plugin.logger.warning("Player "+player+" clicked a slot without any result");
+            event.setResult(Event.Result.DENY);
+            return;
+        }
+
+        plugin.log("precraftedResult = "+precraftedResult);
 
         // Remove crafting inputs
         plugin.logger.warning("TODO: remove inputs for "+item);
@@ -820,14 +847,16 @@ class QuickBenchListener implements Listener {
     @EventHandler(priority=EventPriority.MONITOR, ignoreCancelled=true) 
     public void onInventoryClose(InventoryCloseEvent event) {
         InventoryView view = event.getView();
+        HumanEntity player = event.getPlayer();
 
         if (view == null || view.getTitle() == null || !view.getTitle().equals(QUICKBENCH_TITLE)) {
             // not for us
             return;
         }
 
-        Inventory playerInventory = view.getTopInventory();
+        openPrecraftedResults.remove(player.getUniqueId());
 
+        Inventory playerInventory = view.getTopInventory();
         Inventory benchInventory = view.getBottomInventory();
     }
 
