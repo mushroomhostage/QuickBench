@@ -354,13 +354,15 @@ class TransparentRecipe {
         }
         plugin.log(" + craftable with "+inputs);
 
-        // Synthesize a crafting grid of proper size
+        // Synthesize a crafting grid
         int size = ingredientsList.size();
         int height = (int)(Math.ceil(size * 1.0 / width));
 
-        plugin.log(" + size "+size+" = "+width+"x"+height);
-        
-        net.minecraft.server.InventoryCrafting inventoryCrafting = new net.minecraft.server.InventoryCrafting(new DeafContainer(), width, height);
+        plugin.log(" + recipe size "+size+" = "+width+"x"+height);
+
+        // always make it 3x3, since all recipes can fit on it
+        int gridWidth = 3, gridHeight = 3;
+        net.minecraft.server.InventoryCrafting inventoryCrafting = new net.minecraft.server.InventoryCrafting(new DeafContainer(), gridHeight, gridWidth);
         // .. put taken items onto the grid
         for (int i = 0; i < takenItems.size(); i += 1) {
             if (takenItems.get(i) == null) {
@@ -368,13 +370,20 @@ class TransparentRecipe {
             }
 
             net.minecraft.server.ItemStack takenItem = ((CraftItemStack)(takenItems.get(i))).getHandle();
-            inventoryCrafting.setItem(i, takenItem);
+
+            // rescale recipe to fit on larger grid
+            int x = i % width;
+            int y = i / width;
+
+            int at = x + y * gridWidth;
+
+            inventoryCrafting.setItem(at, takenItem);
         }
 
         // .. and feed it to the recipe to get the actual result
         net.minecraft.server.ItemStack finalResult = opaqueRecipe.b/*MCP getCraftingResult*/(inventoryCrafting);
 
-        plugin.log("  ++ finalResult="+finalResult);
+        plugin.log("  ++ finalResult="+finalResult+" == "+new CraftItemStack(finalResult));
 
         return new PrecraftedResult(getResult(), accum);
     }
@@ -437,7 +446,7 @@ class TransparentRecipe {
         // this is like 'instanceof IElectricItem', but dynamic
         boolean isElectric = IElectricItem.isInstance(rawItem.getItem());
 
-        plugin.log("is electric? " + item + " = " + isElectric + " raw="+rawItem+" getItem="+rawItem.getItem()+" class="+rawItem.getItem().getClass());
+        //plugin.log("is electric? " + item + " = " + isElectric + " raw="+rawItem+" getItem="+rawItem.getItem()+" class="+rawItem.getItem().getClass());
 
         return isElectric;
     }
