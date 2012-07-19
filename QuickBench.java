@@ -69,6 +69,10 @@ class TransparentRecipe {
     // There may be nulls -- which are skipped during matching, but used for ordering on the grid
     ArrayList<ArrayList<ItemStack>> ingredientsList;
 
+    // For shaped recipes, width of the crafting matrix to put the ingredients on
+    // This is used to shape the 1-dimensional ingredientsList into a 2-dimensional matrix
+    int width;
+
     // Crafting result output
     ItemStack result;
 
@@ -126,6 +130,17 @@ class TransparentRecipe {
                     ingredientsList.add(innerList);
                 }
             }
+
+            // Get width of shaped recipes
+            try {
+                Field field = opaqueRecipe.getClass().getDeclaredField("width");
+                field.setAccessible(true);
+                width = field.getInt(opaqueRecipe);
+            } catch (Exception e) {
+                plugin.logger.warning("Failed to reflect on net.minecraft.server.ShapedRecipes width for "+result);
+                e.printStackTrace();
+                throw new IllegalArgumentException(e);
+            }
         } else if (className.equals("forge.oredict.ShapedOreRecipe")) {
             // Forge ore recipes.. we're on our own
             Object[] inputs = null;
@@ -163,6 +178,17 @@ class TransparentRecipe {
                 }
 
                 ingredientsList.add(innerList);
+            }
+
+            // Get width of shaped recipes
+            try {
+                Field field = opaqueRecipe.getClass().getDeclaredField("width");
+                field.setAccessible(true);
+                width = field.getInt(opaqueRecipe);
+            } catch (Exception e) {
+                plugin.logger.warning("Failed to reflect on forge.oredict.ShapedOreRecipe width for "+result);
+                e.printStackTrace();
+                throw new IllegalArgumentException(e);
             }
         } else if (className.equals("forge.oredict.ShapelessOreRecipe")) {
             // Forge ore shapeless is very similar, except inputs are a list instead of array
@@ -241,6 +267,19 @@ class TransparentRecipe {
 
                 ingredientsList.add(innerList);
             }
+
+            // Get width of shaped recipes
+            if (className.equals("ic2.common.AdvRecipe")) {
+                try {
+                    Field field = opaqueRecipe.getClass().getDeclaredField("width");
+                    field.setAccessible(true);
+                    width = field.getInt(opaqueRecipe);
+                } catch (Exception e) {
+                    plugin.logger.warning("Failed to reflect on ic2.common.AdvRecipe width for "+result);
+                    e.printStackTrace();
+                    throw new IllegalArgumentException(e);
+                }
+            }
         } else {
             throw new IllegalArgumentException("Unsupported recipe class: " + className + " of " + opaqueRecipe);
         }
@@ -263,7 +302,7 @@ class TransparentRecipe {
     Returns null if not, otherwise a PrecraftingResult with output and updated inputs. 
     */
     public PrecraftedResult canCraft(final ItemStack[] inputs) {
-        plugin.log("- testing class="+className+" result="+describeItem(getResult())+" canCraft inputs " + inputs + " vs ingredientsList " + ingredientsList);
+        plugin.log("- testing class="+className+" w="+width+" result="+describeItem(getResult())+" inputs=" + inputs + " vs ingredientsList=" + ingredientsList);
 
         // Clone so don't modify original
         ItemStack[] accum = cloneItemStacks(inputs);
