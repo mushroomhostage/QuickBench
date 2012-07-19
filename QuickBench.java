@@ -409,7 +409,7 @@ class TransparentRecipe {
                 // TODO: please preserve NBT :( XXX test with IC2 charged items
                 // This is needed so that the electric item is matched by id only, but you get it back with the charge tags, too
                 // (returned result has more information than matchItem you're looking for)
-                CraftItemStack takenItem = new CraftItemStack(slot);
+                CraftItemStack takenItem = new CraftItemStack(((CraftItemStack)slot).getHandle()).clone();
                 takenItem.setAmount(1);
 
                 return takenItem;
@@ -470,7 +470,14 @@ class TransparentRecipe {
         ItemStack[] copy = new ItemStack[original.length];
         for (int i = 0; i < original.length; i += 1) {
             if (original[i] != null) {
-                copy[i] = original[i].clone();
+                //copy[i] = original[i].clone(); // NEVER USE Bukkit ItemStack clone!!! loses tags
+                if (original[i] instanceof CraftItemStack) {
+                    copy[i] = new CraftItemStack(((CraftItemStack)original[i]).getHandle());
+                    plugin.log(" tag of clone "+original[i]+"="+(((CraftItemStack)original[i]).getHandle().tag));
+                } else {
+                    plugin.log("cloneItemStack not CraftItemStack: " + original[i]);
+                    copy[i] = original[i].clone();
+                }
             }
         }
 
@@ -628,20 +635,6 @@ class QuickBenchListener implements Listener {
     Collection<ItemStack> getRecipeInputs(Recipe recipe) {
         return (recipe instanceof ShapedRecipe) ?  ((ShapedRecipe)recipe).getIngredientMap().values() : ((ShapelessRecipe)recipe).getIngredientList();
     }
-
-    // XXX: replace
-    public ItemStack[] cloneItemStacks(ItemStack[] original) {
-        // TODO: better way to deep copy array?
-        ItemStack[] copy = new ItemStack[original.length];
-        for (int i = 0; i < original.length; i += 1) {
-            if (original[i] != null) {
-                copy[i] = original[i].clone();
-            }
-        }
-
-        return copy;
-    }
-
 
     @EventHandler(priority=EventPriority.MONITOR, ignoreCancelled=true)
     public void onInventoryClickWrapper(InventoryClickEvent event) {
