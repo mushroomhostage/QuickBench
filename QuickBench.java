@@ -449,17 +449,14 @@ class TransparentRecipe {
             return false;
         }
 
-        if (!(item instanceof CraftItemStack)) {
-            // we can't tell.. the item came from a plugin :(
-            return false;
-        }
+        int id = item.getTypeId();
 
-        net.minecraft.server.ItemStack rawItem = ((CraftItemStack)item).getHandle();
+        net.minecraft.server.Item rawItem = net.minecraft.server.Item.byId[id];
 
         // this is like 'instanceof IElectricItem', but dynamic
-        boolean isElectric = IElectricItem.isInstance(rawItem.getItem());
+        boolean isElectric = IElectricItem.isInstance(rawItem);
 
-        //plugin.log("is electric? " + item + " = " + isElectric + " raw="+rawItem+" getItem="+rawItem.getItem()+" class="+rawItem.getItem().getClass());
+        plugin.log("is electric? " + item + " = " + isElectric + " raw="+rawItem);
 
         return isElectric;
     }
