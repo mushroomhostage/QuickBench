@@ -79,8 +79,14 @@ class TransparentRecipe {
     // Name of recipe class for debugging
     String className;
 
+    // Internal recipe so we can call it to get computed crafting result
+    net.minecraft.server.CraftingRecipe/*MCP IRecipe*/ opaqueRecipe;
+
     @SuppressWarnings("unchecked")
     public TransparentRecipe(net.minecraft.server.CraftingRecipe/*MCP IRecipe*/ opaqueRecipe) {
+
+        this.opaqueRecipe = opaqueRecipe;
+
         // Get recipe result
         result = new CraftItemStack(opaqueRecipe.b()); // MCP getResult()
         // TODO: need to call ItemStack b(InventoryCrafting)! for IC2, it performs electric item charge/discharge!
@@ -306,8 +312,11 @@ class TransparentRecipe {
     public PrecraftedResult canCraft(final ItemStack[] inputs) {
         plugin.log("- testing class="+className+" w="+width+" result="+describeItem(getResult())+" inputs=" + inputs + " vs ingredientsList=" + ingredientsList);
 
-        // Clone so don't modify original
+        // Clone inventory so don't modify original - but we'll modify accum, taking away what we need for crafting
         ItemStack[] accum = cloneItemStacks(inputs);
+
+        // ... and putting them here, positionally matching the recipe ingredientsList
+        List<ItemStack> takenItems = new ArrayList<ItemStack>();
 
         // Remove items as we go, ensuring we can successfully remove everything
         for (ArrayList<ItemStack> alternativeIngredients: ingredientsList) {
@@ -315,6 +324,7 @@ class TransparentRecipe {
 
             if (alternativeIngredients == null) {
                 // positional placeholder, we don't care
+                takenItems.add(null);
                 continue;
             }
 
@@ -330,10 +340,11 @@ class TransparentRecipe {
                 // TODO: ensure taken item has all important tags - test IC2 lapotron crafting, should take energy crystal with charge right? XXX
 
                 if (takenItem != null) {
+                    // Take it!
+                    takenItems.add(takenItem);
                     have = true;
                     break;
                 }
-                // TODO: add to 'taken items'
             }
 
             if (!have) {
@@ -343,12 +354,27 @@ class TransparentRecipe {
         }
         plugin.log(" + craftable with "+inputs);
 
+        // Synthesize a crafting grid of proper size
         int size = ingredientsList.size();
         int height = (int)(Math.ceil(size * 1.0 / width));
 
         plugin.log(" + size "+size+" = "+width+"x"+height);
         
-        net.minecraft.server.InventoryCrafting inventoryCrafting = new net.minecraft.server.InventoryCrafting(null, width, height);
+        net.minecraft.server.InventoryCrafting inventoryCrafting = new net.minecraft.server.InventoryCrafting(new DeafContainer(), width, height);
+        // .. put taken items onto the grid
+        for (int i = 0; i < takenItems.size(); i += 1) {
+            if (takenItems.get(i) == null) {
+                continue;
+            }
+
+            net.minecraft.server.ItemStack takenItem = ((CraftItemStack)(takenItems.get(i))).getHandle();
+            inventoryCrafting.setItem(i, takenItem);
+        }
+
+        // .. and feed it to the recipe to get the actual result
+        net.minecraft.server.ItemStack finalResult = opaqueRecipe.b/*MCP getCraftingResult*/(inventoryCrafting);
+
+        plugin.log("  ++ finalResult="+finalResult);
 
         return new PrecraftedResult(getResult(), accum);
     }
@@ -476,6 +502,14 @@ class TransparentRecipe {
         // TODO: return PrecraftedResult s
 
         return outputs;
+    }
+}
+
+/** A container (event handler) for listening to crafting matrix changes that doesn't really listen. */
+class DeafContainer extends net.minecraft.server.Container {
+    @Override
+    public boolean b/*MCP canInteractWith*/(net.minecraft.server.EntityHuman entityhuman) {
+        return true;
     }
 }
 
