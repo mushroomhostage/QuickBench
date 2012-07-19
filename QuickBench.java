@@ -804,7 +804,6 @@ class QuickBenchListener implements Listener {
         // TODO: list.toArray()? returns Object[]
         for (int i = 0; i < list.size(); i += 1) {
             array[i] = list.get(i).computedOutput;
-            i += 1;
         }
 
         return array;
