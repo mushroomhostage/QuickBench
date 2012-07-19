@@ -363,7 +363,7 @@ class TransparentRecipe {
                 continue;
             }
 
-            net.minecraft.server.ItemStack takenItem = ((CraftItemStack)(takenItems.get(i))).getHandle();
+            net.minecraft.server.ItemStack takenItem = ((CraftItemStack)(takenItems.get(i))).getHandle().cloneItemStack(); // preserve tags
 
             // rescale recipe to fit on larger grid
             int x = i % width;
@@ -406,10 +406,10 @@ class TransparentRecipe {
                     slot.setAmount(slot.getAmount() - 1);
                 }
 
-                // TODO: please preserve NBT :( XXX test with IC2 charged items
+                // Split off a taken item
                 // This is needed so that the electric item is matched by id only, but you get it back with the charge tags, too
                 // (returned result has more information than matchItem you're looking for)
-                CraftItemStack takenItem = new CraftItemStack(((CraftItemStack)slot).getHandle()).clone();
+                CraftItemStack takenItem = new CraftItemStack(((CraftItemStack)slot).getHandle().cloneItemStack()); // preserve tags
                 takenItem.setAmount(1);
 
                 return takenItem;
@@ -472,8 +472,7 @@ class TransparentRecipe {
             if (original[i] != null) {
                 //copy[i] = original[i].clone(); // NEVER USE Bukkit ItemStack clone!!! loses tags
                 if (original[i] instanceof CraftItemStack) {
-                    copy[i] = new CraftItemStack(((CraftItemStack)original[i]).getHandle());
-                    plugin.log(" tag of clone "+original[i]+"="+(((CraftItemStack)original[i]).getHandle().tag));
+                    copy[i] = new CraftItemStack(((CraftItemStack)original[i]).getHandle().cloneItemStack()); // preserve tags
                 } else {
                     plugin.log("cloneItemStack not CraftItemStack: " + original[i]);
                     copy[i] = original[i].clone();
