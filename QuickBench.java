@@ -387,38 +387,6 @@ class TransparentRecipe {
 
         plugin.log("  ++ finalResult="+rawFinalResult+" == "+finalResult);
 
-/* TODO: call with fake player so real player doesn't get empty buckets!
-
-        // Post-crafting hooks:
-        // SlotCrafting onPickupFromSlot(ItemStack) = SlotResult c
-        // FMLServerHandler.instance().onItemCrafted(thePlayer, par1ItemStack, craftMatrix);
-        // ForgeHooks.onTakenFromCrafting(thePlayer, par1ItemStack, craftMatrix);
-        // hooks added in https://github.com/MinecraftForge/MinecraftForge/blob/master/forge/patches/minecraft_server/net/minecraft/src/SlotCrafting.java.patch
-        // vanilla also checks: getContainerItem, doesContainerItemLeaveCraftingGrid.. for cake recipe (milk buckets -> empty bucket)
-        // so we really should call SlotResult c(ItemStack) here
-
-        net.minecraft.server.EntityHuman entityhuman = ((org.bukkit.craftbukkit.entity.CraftPlayer)player).getHandle();
-        net.minecraft.server.IInventory inventoryExtractFrom = null; // TODO: needed?
-        int slotIndex = 0;
-        int xDisplayPosition = 0;
-        int yDisplayPosition = 0;
-
-        net.minecraft.server.SlotResult slotResult = new net.minecraft.server.SlotResult(
-            entityhuman,  // "The player that is using the GUI where this slot resides"
-            inventoryCrafting, // "The craft matrix inventory linked to this result slot"
-            inventoryExtractFrom, // "The inventory we want to extract a slot from."
-            slotIndex,  // "The index of the slot in the inventory"
-            xDisplayPosition,  // "display position of the inventory slot on the screen x axis"
-            yDisplayPosition); // "display position of the inventory slot on the screen y axis"
-
-        slotResult.c(rawFinalResult); // MCP onPickupFromSlot - mutates inventoryCrafting
-
-        for (net.minecraft.server.ItemStack leftoverItem: inventoryCrafting.getContents()) {
-            plugin.log(" ! leftover: " + leftoverItem + " = " + new CraftItemStack(leftoverItem));
-        }
-        */
-
-
         return new PrecraftedResult(finalResult, accum);
     }
 
@@ -460,7 +428,9 @@ class TransparentRecipe {
     }
 
     /** Return whether an item matches given criteria.
-    Must have same type ID. matchItem damage can be -1 to match any damage.
+    Must have same type ID. matchItem damage can be -1 to match any damage (wildcard).
+    Electric items match based on type ID only, as if the damage wildcard was set.
+    Note this is NOT commutative; the 'matchItem' criteria is less general than the 'item'!
     */
     public static boolean itemMatches(ItemStack item, ItemStack matchItem) {
         return item.getTypeId() == matchItem.getTypeId() &&
@@ -573,15 +543,15 @@ class PrecraftedResult {
     ItemStack computedOutput;
 
     // The complete altered player inventory, with recipe inputs removed/updated
-    ItemStack[] inventory;
+    ItemStack[] updatedInventory;
 
-    public PrecraftedResult(ItemStack computedOutput, ItemStack[] inventory) {
+    public PrecraftedResult(ItemStack computedOutput, ItemStack[] updatedInventory) {
         this.computedOutput = computedOutput;
-        this.inventory = inventory;
+        this.updatedInventory = updatedInventory;
     }
 
     public String toString() {
-        return "PrecraftedResult computedOutput="+computedOutput+", inventory="+inventory;
+        return "PrecraftedResult computedOutput="+computedOutput+", inventory="+updatedInventory;
     }
 }
 
@@ -656,6 +626,7 @@ class QuickBenchListener implements Listener {
 
             ArrayList<PrecraftedResult> precraftedResults = TransparentRecipe.precraft(player.getInventory().getContents());
 
+            // Store computed results for actually crafting when click
             openPrecraftedResults.put(player.getUniqueId(), precraftedResults);
 
             final int ROW_SIZE = 9;
@@ -710,10 +681,10 @@ class QuickBenchListener implements Listener {
         // Click to craft
 
         HumanEntity player = event.getWhoClicked();
-        ItemStack item = event.getCurrentItem();
+        ItemStack clickedItem = event.getCurrentItem();
 
         plugin.log("click "+event);
-        plugin.log("cur item = "+item);
+        plugin.log("cur item = "+clickedItem);
         plugin.log("shift = "+event.isShiftClick());
         // TODO: shift-click to craft all?
         plugin.log("raw slot = "+event.getRawSlot());
@@ -730,7 +701,7 @@ class QuickBenchListener implements Listener {
             return;
         }
 
-        if (item == null || item.getType() == Material.AIR) {
+        if (clickedItem == null || clickedItem.getType() == Material.AIR) {
             // dropped item (raw slot -999) or empty slot
             event.setResult(Event.Result.DENY);
             return;
@@ -739,6 +710,7 @@ class QuickBenchListener implements Listener {
         Inventory playerInventory = view.getBottomInventory();
         ItemStack[] playerContents = playerInventory.getContents();
 
+        // Lookup the item they clicked from the precrafted results, based on the slot index
         ArrayList<PrecraftedResult> precraftedResults = openPrecraftedResults.get(player.getUniqueId());
         if (precraftedResults == null) {
             plugin.logger.warning("Player "+player+" clicked without an open QuickBench");
@@ -755,88 +727,83 @@ class QuickBenchListener implements Listener {
 
         plugin.log("precraftedResult = "+precraftedResult);
 
-        // Remove crafting inputs
-        plugin.logger.warning("TODO: remove inputs for "+item);
-        event.setResult(Event.Result.DENY);
-        boolean crafted = false;
-
-        /* XXX TODO - should we backtrack recipe from clicked input? or better yet, track position of click in window?!
-        List<Recipe> recipes = getRecipesForX(item);
-        if (recipes == null) {
-            plugin.logger.warning("No recipes for "+item);
+        // ..expected to click the same item in the inventory as we recorded in its slot
+        // if not, then our server-side state is out of sync with the client or there's a bug somewhere
+        if (!TransparentRecipe.itemMatches(precraftedResult.computedOutput, clickedItem)) {
+            plugin.logger.warning("Player "+player+" clicked "+clickedItem+" but expected "+precraftedResult);
             event.setResult(Event.Result.DENY);
             return;
         }
 
-        for (Recipe recipe: recipes) {
-            if (canCraft(playerContents, recipe)) {
 
-                Collection<ItemStack> inputs = getRecipeInputs(recipe);
-
-                plugin.log(" craft "+recipe+" inputs="+inputs);
-
-                // Remove items from recipe from player inventory
-                for (ItemStack input: inputs) {
-                    if (input == null) {
-                        continue;
-                    }
-
-                    int missing = takeItems(playerContents, input);
-
-                    if (missing != 0) {
-                        plugin.logger.warning("Failed to remove crafting inputs "+inputs+" for player "+player.getName()+" crafting "+item+", missing "+missing);
-                        event.setResult(Event.Result.DENY);
-                        return;
-                    }
-                }
-
-                playerInventory.setContents(playerContents);
-                crafted = true;
-                break;
-            }
-        }*/
-
-        if (!crafted) {
-            plugin.logger.warning("Failed to find matching recipe from player "+player.getName()+" for crafting "+item);
-            // don't let pick up
-            event.setResult(Event.Result.DENY);
-            return;
-        }
-
-        /* TODO
+        // Remove crafting inputs ingredients (pre-computed from existing player inventory)
+        player.getInventory().setContents(precraftedResult.updatedInventory);
 
         // add to player inventory when clicked
-        HashMap<Integer,ItemStack> overflow = view.getBottomInventory().addItem(item);
+        HashMap<Integer,ItemStack> overflow = view.getBottomInventory().addItem(precraftedResult.computedOutput);
 
         // drop excess items on the floor (easier than denying the event.. maybe better?)
         for (ItemStack excessItem: overflow.values()) {
             player.getWorld().dropItemNaturally(player.getLocation(), excessItem);
         }
 
+/* TODO: call this for real - postcraft()
+        // Post-crafting hooks:
+        // SlotCrafting onPickupFromSlot(ItemStack) = SlotResult c
+        // FMLServerHandler.instance().onItemCrafted(thePlayer, par1ItemStack, craftMatrix);
+        // ForgeHooks.onTakenFromCrafting(thePlayer, par1ItemStack, craftMatrix);
+        // hooks added in https://github.com/MinecraftForge/MinecraftForge/blob/master/forge/patches/minecraft_server/net/minecraft/src/SlotCrafting.java.patch
+        // vanilla also checks: getContainerItem, doesContainerItemLeaveCraftingGrid.. for cake recipe (milk buckets -> empty bucket)
+        // so we really should call SlotResult c(ItemStack) here
 
-        // Populate with new items, either adding (if have new crafting inputs) or removing (if took up all)
-        List<ItemStack> newItems = TransparentRecipe.precraft((Player)player);
+        net.minecraft.server.EntityHuman entityhuman = ((org.bukkit.craftbukkit.entity.CraftPlayer)player).getHandle();
+        net.minecraft.server.IInventory inventoryExtractFrom = null; // TODO: needed?
+        int slotIndex = 0;
+        int xDisplayPosition = 0;
+        int yDisplayPosition = 0;
 
-        if (newItems.size() > view.getTopInventory().getSize()) {
+        net.minecraft.server.SlotResult slotResult = new net.minecraft.server.SlotResult(
+            entityhuman,  // "The player that is using the GUI where this slot resides"
+            inventoryCrafting, // "The craft matrix inventory linked to this result slot"
+            inventoryExtractFrom, // "The inventory we want to extract a slot from."
+            slotIndex,  // "The index of the slot in the inventory"
+            xDisplayPosition,  // "display position of the inventory slot on the screen x axis"
+            yDisplayPosition); // "display position of the inventory slot on the screen y axis"
+
+        slotResult.c(rawFinalResult); // MCP onPickupFromSlot - mutates inventoryCrafting
+
+        for (net.minecraft.server.ItemStack leftoverItem: inventoryCrafting.getContents()) {
+            plugin.log(" ! leftover: " + leftoverItem + " = " + new CraftItemStack(leftoverItem));
+        }
+        */
+
+
+
+
+        // Update crafting results with new possibilities
+        // TODO: what's the deal with some items disappearing? plantballs
+        ArrayList<PrecraftedResult> newPrecraftedResults = TransparentRecipe.precraft(player.getInventory().getContents());
+        openPrecraftedResults.put(player.getUniqueId(), newPrecraftedResults);
+
+        if (newPrecraftedResults.size() > view.getTopInventory().getSize()) {
             // TODO: improve.. but can't resize window? close and reopen
             ((Player)player).sendMessage("More crafting outputs available than shown here - reopen to see full list!");
-            newItems = newItems.subList(0, view.getTopInventory().getSize());
+            newPrecraftedResults = (ArrayList<PrecraftedResult>)newPrecraftedResults.subList(0, view.getTopInventory().getSize());
         }
 
-        view.getTopInventory().setContents(itemStackArray(newItems));
-        */
+        view.getTopInventory().setContents(itemStackArray(newPrecraftedResults));
+
 
         // don't let pick up
         event.setResult(Event.Result.DENY);
     }
 
-    public ItemStack[] itemStackArray(List<ItemStack> list) {
+    public ItemStack[] itemStackArray(List<PrecraftedResult> list) {
         ItemStack[] array = new ItemStack[list.size()];
 
         // TODO: list.toArray()? returns Object[]
-        int i = 0;
-        for (ItemStack item: list) {
-            array[i] = list.get(i);
+        for (int i = 0; i < list.size(); i += 1) {
+            array[i] = list.get(i).computedOutput;
             i += 1;
         }
 
