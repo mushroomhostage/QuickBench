@@ -1,5 +1,12 @@
-X   X
-    * 
+X   3.0
+    * Add support for Forge 3.3.8 ore dictionary recipes
+    * Add support for IC2 v1.97 recipes (for 1.95b use QuickBench 2.1)
+    * Add support for electric items in IC2 
+    * Add support for computed recipe outputs (fixes charge loss bug!)
+    * Add support for post-craft hooks, container/damage items 
+     (RedPower2 drawplate now crafts as expected, vanilla cake gives back buckets)
+    * Fix items losing NBT on crafting
+    * Rewritten and optimized crafting algorithm
 
 2012-07-16 2.2.2 beta
     * Partial fix for IC2 v1.97 crafting
