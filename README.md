@@ -4,7 +4,7 @@ Tired of remembering crafting recipes? Use a QuickBench! Unlike a normal craftin
 which operates on a crafting grid, the QuickBench shows you a list of available items,
 and you simply click to craft.
 
-**[Download QuickBench 2.2.2](http://dev.bukkit.org/server-mods/quickbench/files/8-quick-bench-2-2-2/)** - released 2012/07/16
+**[Download QuickBench 3.0](http://dev.bukkit.org/server-mods/quickbench/files/9-quick-bench-3-0/)** - released 2012/07/19, now supports IC2 v1.97 and Forge 3.3.8!
 
 Features:
 
@@ -52,14 +52,6 @@ QuickBenches (item is identified by itemId + Fire Aspect I enchantment).
 will cause a blank inventory to be shown if there is nothing to craft. Note that if during crafting additional items
 become available beyond what can be shown in the window, the player must close and reopen the QuickBench to see
 them - to mitigate this problem, you can set minSizeRows to a higher value to provide extra room. 6 is equivalent to a large chest.
-
-**bypassBukkit** (true): Enable to support custom recipe types, by attempting to use reflection to access
-the net.minecraft.server classes. If this fails or is problematic, you can turn this off to use 
-Bukkit's recipeIterator and getRecipesFor wrapper API. This option is required for IC2 recipes
-(tested on MCPC 1.2.3 with IC2 v1.81 r5), and is on
-by default since it has been verified to work well on vanilla CraftBukkit (tested on 1.2.5-R1.0),
-but if it breaks in future updates you can disable it. If you run a vanilla CraftBukkit server (without mods),
-you should be able to disable this option with no ill effect.
 
 **useDeniedMessage**, **placeDeniedMessage**, **destroyDeniedMessage**: Messages to send to player if attempts
 to use, place, or destroy a QuickBench without permission (see nodes below). Set to null to not send any message.
