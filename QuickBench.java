@@ -526,7 +526,7 @@ class TransparentRecipe {
                 // need to return any items back to the user, for example: vanilla cake, RP2 wool card, diamond drawplate
             } catch (Exception e) {
                 plugin.log("precraft skipping recipe: "+opaqueRecipe);
-                e.printStackTrace();
+                //TODO e.printStackTrace();
             }
         }
 
@@ -771,7 +771,7 @@ class QuickBenchListener implements Listener {
         if (newPrecraftedResults.size() > view.getTopInventory().getSize()) {
             // TODO: improve.. but can't resize window? close and reopen
             ((Player)player).sendMessage("More crafting outputs available than shown here - reopen to see full list!");
-            newPrecraftedResults = (ArrayList<PrecraftedResult>)newPrecraftedResults.subList(0, view.getTopInventory().getSize());
+            newPrecraftedResults = new ArrayList<PrecraftedResult>(newPrecraftedResults.subList(0, view.getTopInventory().getSize()));
         }
 
         view.getTopInventory().setContents(itemStackArray(newPrecraftedResults));
