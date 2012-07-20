@@ -465,12 +465,19 @@ class TransparentRecipe {
         if (item == null) {
             return "ItemStack null";
         }
+        if (item.getTypeId() == 0) {
+            return "ItemStack air";
+        }
         String s = "ItemStack "+item.getAmount()+"x"+item.getTypeId()+":"+item.getDurability()+" ("+item.getType()+")";
         if (!(item instanceof CraftItemStack)) {
             return s + " (not CraftItemStack!)";
         } else {
             net.minecraft.server.ItemStack realItem = ((CraftItemStack)item).getHandle();
-            s += " tag="+realItem.tag; // TODO: dump
+            if (realItem == null) {
+                s += " no tag - couldn't get handle!";
+            } else {
+                s += " tag="+realItem.tag; // TODO: dump
+            }
 
             return s;
         }
@@ -743,7 +750,7 @@ class QuickBenchListener implements Listener {
         // Remove crafting inputs ingredients (pre-computed from existing player inventory)
         player.getInventory().setContents(precraftedResult.updatedInventory);
 
-        // add to player inventory when clicked
+        // add crafted item to player inventory when clicked
         HashMap<Integer,ItemStack> overflow = view.getBottomInventory().addItem(precraftedResult.computedOutput);
 
         // drop excess items on the floor (easier than denying the event.. maybe better?)
@@ -752,8 +759,8 @@ class QuickBenchListener implements Listener {
         }
 
 
-        // Call post-crafting hooks
-        postcraft(player, precraftedResult);
+        // Call post-crafting hooks to potentially add container/damaged items back to inventory as well
+        postcraft(player, precraftedResult, view.getBottomInventory());
 
 
         // Update crafting results with new possibilities
@@ -774,7 +781,7 @@ class QuickBenchListener implements Listener {
         event.setResult(Event.Result.DENY);
     }
 
-    private void postcraft(HumanEntity player, PrecraftedResult precraftedResult) {
+    private void postcraft(HumanEntity player, PrecraftedResult precraftedResult, Inventory destinationInventory) {
         // postcraft
         // Post-crafting hooks:
         // SlotCrafting onPickupFromSlot(ItemStack) = SlotResult c
@@ -800,8 +807,22 @@ class QuickBenchListener implements Listener {
 
         slotResult.c(((CraftItemStack)precraftedResult.computedOutput).getHandle()); // MCP onPickupFromSlot - mutates inventoryCrafting
 
+        // Add any items still in the crafting matrix back to the player's inventory
+        // Used for example with: vanilla cakes (adds buckets), RedPower2 drawplate (adds damaged items)
+
         for (net.minecraft.server.ItemStack leftoverItem: precraftedResult.inventoryCrafting.getContents()) {
-            plugin.log(" ! leftover: " + leftoverItem + " = " + new CraftItemStack(leftoverItem));
+            plugin.log(" ! leftover: " + leftoverItem + " = " + TransparentRecipe.describeItem(new CraftItemStack(leftoverItem)));
+
+            // add crafted item to player inventory when clicked
+            HashMap<Integer,ItemStack> overflow = destinationInventory.addItem(new CraftItemStack(leftoverItem));
+
+            // drop excess items on the floor (easier than denying the event.. maybe better?)
+            for (ItemStack excessItem: overflow.values()) {
+                player.getWorld().dropItemNaturally(player.getLocation(), excessItem);
+            }
+
+
+
         }
 
 
