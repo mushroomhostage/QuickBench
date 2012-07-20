@@ -1,9 +1,11 @@
-2012-07-16 2.2.2
+X   X
+    * 
+
+2012-07-16 2.2.2 beta
     * Partial fix for IC2 v1.97 crafting
     Note: support is incomplete and _will throw errors_ - but you can craft again
     
-
-2012-07-13  2.2
+2012-07-13  2.2 beta
     * Fix broken toBukkitRecipe() wrappers preventing crafting (IC2 1.97 r1 bug)
     * Fix NPE in event handler preventing use of EnderStorage mod
 

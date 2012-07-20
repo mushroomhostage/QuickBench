@@ -387,7 +387,7 @@ class TransparentRecipe {
 
         plugin.log("  ++ finalResult="+rawFinalResult+" == "+finalResult);
 
-        return new PrecraftedResult(finalResult, accum);
+        return new PrecraftedResult(finalResult, accum, inventoryCrafting);
     }
 
     /** Take an item from an inventory.
@@ -545,9 +545,13 @@ class PrecraftedResult {
     // The complete altered player inventory, with recipe inputs removed/updated
     ItemStack[] updatedInventory;
 
-    public PrecraftedResult(ItemStack computedOutput, ItemStack[] updatedInventory) {
+    // The crafting grid the recipe was crafted on, populated with ingredients
+    net.minecraft.server.InventoryCrafting inventoryCrafting;
+
+    public PrecraftedResult(ItemStack computedOutput, ItemStack[] updatedInventory, net.minecraft.server.InventoryCrafting inventoryCrafting) {
         this.computedOutput = computedOutput;
         this.updatedInventory = updatedInventory;
+        this.inventoryCrafting = inventoryCrafting;
     }
 
     public String toString() {
@@ -747,37 +751,9 @@ class QuickBenchListener implements Listener {
             player.getWorld().dropItemNaturally(player.getLocation(), excessItem);
         }
 
-/* TODO: call this for real - postcraft()
-        // Post-crafting hooks:
-        // SlotCrafting onPickupFromSlot(ItemStack) = SlotResult c
-        // FMLServerHandler.instance().onItemCrafted(thePlayer, par1ItemStack, craftMatrix);
-        // ForgeHooks.onTakenFromCrafting(thePlayer, par1ItemStack, craftMatrix);
-        // hooks added in https://github.com/MinecraftForge/MinecraftForge/blob/master/forge/patches/minecraft_server/net/minecraft/src/SlotCrafting.java.patch
-        // vanilla also checks: getContainerItem, doesContainerItemLeaveCraftingGrid.. for cake recipe (milk buckets -> empty bucket)
-        // so we really should call SlotResult c(ItemStack) here
 
-        net.minecraft.server.EntityHuman entityhuman = ((org.bukkit.craftbukkit.entity.CraftPlayer)player).getHandle();
-        net.minecraft.server.IInventory inventoryExtractFrom = null; // TODO: needed?
-        int slotIndex = 0;
-        int xDisplayPosition = 0;
-        int yDisplayPosition = 0;
-
-        net.minecraft.server.SlotResult slotResult = new net.minecraft.server.SlotResult(
-            entityhuman,  // "The player that is using the GUI where this slot resides"
-            inventoryCrafting, // "The craft matrix inventory linked to this result slot"
-            inventoryExtractFrom, // "The inventory we want to extract a slot from."
-            slotIndex,  // "The index of the slot in the inventory"
-            xDisplayPosition,  // "display position of the inventory slot on the screen x axis"
-            yDisplayPosition); // "display position of the inventory slot on the screen y axis"
-
-        slotResult.c(rawFinalResult); // MCP onPickupFromSlot - mutates inventoryCrafting
-
-        for (net.minecraft.server.ItemStack leftoverItem: inventoryCrafting.getContents()) {
-            plugin.log(" ! leftover: " + leftoverItem + " = " + new CraftItemStack(leftoverItem));
-        }
-        */
-
-
+        // Call post-crafting hooks
+        postcraft(player, precraftedResult);
 
 
         // Update crafting results with new possibilities
@@ -796,6 +772,39 @@ class QuickBenchListener implements Listener {
 
         // don't let pick up
         event.setResult(Event.Result.DENY);
+    }
+
+    private void postcraft(HumanEntity player, PrecraftedResult precraftedResult) {
+        // postcraft
+        // Post-crafting hooks:
+        // SlotCrafting onPickupFromSlot(ItemStack) = SlotResult c
+        // FMLServerHandler.instance().onItemCrafted(thePlayer, par1ItemStack, craftMatrix);
+        // ForgeHooks.onTakenFromCrafting(thePlayer, par1ItemStack, craftMatrix);
+        // hooks added in https://github.com/MinecraftForge/MinecraftForge/blob/master/forge/patches/minecraft_server/net/minecraft/src/SlotCrafting.java.patch
+        // vanilla also checks: getContainerItem, doesContainerItemLeaveCraftingGrid.. for cake recipe (milk buckets -> empty bucket)
+        // so we really should call SlotResult c(ItemStack) here
+
+        net.minecraft.server.EntityHuman entityhuman = ((org.bukkit.craftbukkit.entity.CraftPlayer)player).getHandle();
+        net.minecraft.server.IInventory inventoryExtractFrom = null; // TODO: needed?
+        int slotIndex = 0;
+        int xDisplayPosition = 0;
+        int yDisplayPosition = 0;
+
+        net.minecraft.server.SlotResult slotResult = new net.minecraft.server.SlotResult(
+            entityhuman,  // "The player that is using the GUI where this slot resides"
+            precraftedResult.inventoryCrafting, // "The craft matrix inventory linked to this result slot"
+            inventoryExtractFrom, // "The inventory we want to extract a slot from."
+            slotIndex,  // "The index of the slot in the inventory"
+            xDisplayPosition,  // "display position of the inventory slot on the screen x axis"
+            yDisplayPosition); // "display position of the inventory slot on the screen y axis"
+
+        slotResult.c(((CraftItemStack)precraftedResult.computedOutput).getHandle()); // MCP onPickupFromSlot - mutates inventoryCrafting
+
+        for (net.minecraft.server.ItemStack leftoverItem: precraftedResult.inventoryCrafting.getContents()) {
+            plugin.log(" ! leftover: " + leftoverItem + " = " + new CraftItemStack(leftoverItem));
+        }
+
+
     }
 
     public ItemStack[] itemStackArray(List<PrecraftedResult> list) {
