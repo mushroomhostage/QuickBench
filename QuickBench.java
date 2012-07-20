@@ -818,14 +818,11 @@ class QuickBenchListener implements Listener {
 
             // drop excess items on the floor (easier than denying the event.. maybe better?)
             for (ItemStack excessItem: overflow.values()) {
-                player.getWorld().dropItemNaturally(player.getLocation(), excessItem);
+                if (excessItem != null && excessItem.getTypeId() != 0) {
+                    player.getWorld().dropItemNaturally(player.getLocation(), excessItem);
+                }
             }
-
-
-
         }
-
-
     }
 
     public ItemStack[] itemStackArray(List<PrecraftedResult> list) {
