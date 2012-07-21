@@ -638,6 +638,7 @@ class QuickBenchListener implements Listener {
             ArrayList<PrecraftedResult> precraftedResults = TransparentRecipe.precraft(player.getInventory().getContents());
 
             // Store computed results for actually crafting when click
+            plugin.log("saving precraft to player "+player.getUniqueId());
             openPrecraftedResults.put(player.getUniqueId(), precraftedResults);
 
             final int ROW_SIZE = 9;
@@ -775,6 +776,7 @@ class QuickBenchListener implements Listener {
         // Update crafting results with new possibilities
         // TODO: what's the deal with some items disappearing? plantballs
         ArrayList<PrecraftedResult> newPrecraftedResults = TransparentRecipe.precraft(player.getInventory().getContents());
+        plugin.log("saving precraft to player "+player.getUniqueId());
         openPrecraftedResults.put(player.getUniqueId(), newPrecraftedResults);
 
         if (newPrecraftedResults.size() > view.getTopInventory().getSize()) {
@@ -856,7 +858,13 @@ class QuickBenchListener implements Listener {
             return;
         }
 
-        openPrecraftedResults.remove(player.getUniqueId());
+        plugin.log("closing inventory for "+player.getUniqueId());
+        // InvTweaks '...' inventory settings button behaves oddly on these windows
+        // When you click it, it brings up the settings, then when you click Done the inventory window is closed
+        // - however, it doesn't send an event. Next time you open, you get an open event + close event, so 
+        // the 'clicked without an open QuickBench' message would occur. 
+        // To prevent this, just keep the precrafted results around.
+        //openPrecraftedResults.remove(player.getUniqueId());
 
         Inventory playerInventory = view.getTopInventory();
         Inventory benchInventory = view.getBottomInventory();
