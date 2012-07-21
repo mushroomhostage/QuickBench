@@ -84,6 +84,9 @@ class TransparentRecipe {
     // Internal recipe so we can call it to get computed crafting result
     net.minecraft.server.CraftingRecipe/*MCP IRecipe*/ opaqueRecipe;
 
+    // Flag to hide recipes from crafting
+    boolean hidden;
+
     @SuppressWarnings("unchecked")
     public TransparentRecipe(net.minecraft.server.CraftingRecipe/*MCP IRecipe*/ opaqueRecipe) {
 
@@ -232,13 +235,15 @@ class TransparentRecipe {
             // IndustrialCraft^2 shapeless and shaped recipes have the same ingredients list
             // This is for 1.97 - for 1.95b see QuickBench 2.1
 
-            boolean hidden = false;
-
             Object[] inputs = null;
+            hidden = false;
             try {
-                Field field = opaqueRecipe.getClass().getDeclaredField("input");
-                field.setAccessible(true);
-                inputs = (Object[])field.get(opaqueRecipe);
+                Field inputField = opaqueRecipe.getClass().getDeclaredField("input");
+                inputField.setAccessible(true);
+                inputs = (Object[])inputField.get(opaqueRecipe);
+
+                Field hiddenField = opaqueRecipe.getClass().getDeclaredField("hidden");
+                hidden = hiddenField.getBoolean(opaqueRecipe);
             } catch (Exception e) {
                 plugin.logger.warning("Failed to reflect on ic2.common.AdvRecipe for "+outputMatch);
                 e.printStackTrace();
@@ -260,9 +265,6 @@ class TransparentRecipe {
                     }
                 } else if (input instanceof net.minecraft.server.ItemStack) {
                     innerList.add(new CraftItemStack((net.minecraft.server.ItemStack)input));
-                } else if (input instanceof Boolean) {  // TODO: not detected?
-                    hidden = ((Boolean)input).booleanValue();
-                    plugin.log("hidden = " + hidden); // TODO: option to skip secret hidden recipes (UU matter, nukes)
                 } else if (input == null) {
                     // positional placeholder
                     ingredientsList.add(null);
@@ -502,7 +504,7 @@ class TransparentRecipe {
     }
 
     /** Return all items which can be crafted using given inputs from player. */
-    public static ArrayList<PrecraftedResult> precraft(final ItemStack[] inputs) {
+    public static ArrayList<PrecraftedResult> precraft(final ItemStack[] inputs, HumanEntity player) {
         ArrayList<PrecraftedResult> outputs = new ArrayList<PrecraftedResult>();
         int recipeCount = 0;
 
@@ -514,6 +516,11 @@ class TransparentRecipe {
 
             try {
                 TransparentRecipe recipe = new TransparentRecipe(opaqueRecipe);
+
+                if (recipe.hidden && player != null && !player.hasPermission("quickbench.showhidden")) {
+                    plugin.log("no permission to craft, player="+player+" and recipe="+recipe);
+                    continue;
+                }
 
                 PrecraftedResult precraftedResult = recipe.canCraft(inputs);
 
@@ -635,7 +642,7 @@ class QuickBenchListener implements Listener {
                 return;
             }
 
-            ArrayList<PrecraftedResult> precraftedResults = TransparentRecipe.precraft(player.getInventory().getContents());
+            ArrayList<PrecraftedResult> precraftedResults = TransparentRecipe.precraft(player.getInventory().getContents(), player);
 
             // Store computed results for actually crafting when click
             plugin.log("saving precraft to player "+player.getUniqueId());
@@ -775,7 +782,7 @@ class QuickBenchListener implements Listener {
 
         // Update crafting results with new possibilities
         // TODO: what's the deal with some items disappearing? plantballs
-        ArrayList<PrecraftedResult> newPrecraftedResults = TransparentRecipe.precraft(player.getInventory().getContents());
+        ArrayList<PrecraftedResult> newPrecraftedResults = TransparentRecipe.precraft(player.getInventory().getContents(), player);
         plugin.log("saving precraft to player "+player.getUniqueId());
         openPrecraftedResults.put(player.getUniqueId(), newPrecraftedResults);
 

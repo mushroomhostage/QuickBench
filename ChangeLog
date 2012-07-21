@@ -1,8 +1,9 @@
 X   X
+    * Add quickbench.showHidden permission node to control crafting of IC2 secret recipes
+    * Fix dupe bug involving scrolling mouse wheel (prevent interaction with bottom inventory)
     * Fix dropping air when multiple players click
     * Fix clicking item to craft while holding an item, no longer allowed
-    * Stop allowing manipulating your own inventory view while using a QuickBench
-    * Improve compatibility with InvTweaks window closing events
+    * Improve compatibility with InvTweaks window closing events ('clicked without' error)
 
 2012-07-19  3.0
     * Completely rewritten and optimized crafting algorithm

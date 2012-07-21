@@ -1,15 +1,19 @@
 name: QuickBench
 main: com.exphc.QuickBench.QuickBench
-version: 3.0.1test2
+version: 3.0.1
 permissions:
     quickbench.*:
         children:
             quickbench.use: true
+            quickbench.showHidden: true
             quickbench.place: true
             quickbench.destroy: true
         default: false
     quickbench.use:
         description: Allows you to use a QuickBench
+        default: true
+    quickbench.showHidden:
+        description: Allows you to see hidden recipes
         default: true
     quickbench.place:
         description: Allows you to place a QuickBench 
@@ -17,3 +21,4 @@ permissions:
     quickbench.destroy:
         description: Allows you to destroy a QuickBench
         default: true
+
