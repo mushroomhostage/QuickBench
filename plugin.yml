@@ -1,6 +1,6 @@
 name: QuickBench
 main: com.exphc.QuickBench.QuickBench
-version: 3.0.1
+version: 3.0.1test1
 permissions:
     quickbench.*:
         children:

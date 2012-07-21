@@ -718,6 +718,13 @@ class QuickBenchListener implements Listener {
             return;
         }
 
+        ItemStack itemHolding = event.getCursor();
+        if (itemHolding != null && itemHolding.getTypeId() != 0) {
+            // they're trying to click the top inventory while holding an item.. nope
+            event.setResult(Event.Result.DENY);
+            return;
+        }
+
         Inventory playerInventory = view.getBottomInventory();
         ItemStack[] playerContents = playerInventory.getContents();
 
