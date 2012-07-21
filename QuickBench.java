@@ -709,6 +709,8 @@ class QuickBenchListener implements Listener {
             }
 
             // otherwise, let manipulate their own player inventory
+            // Actually, don't let them!
+            event.setResult(Event.Result.DENY);
             return;
         }
 

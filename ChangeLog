@@ -1,6 +1,7 @@
 X   X
     * Fix dropping air when multiple players click
     * Fix clicking item to craft while holding an item
+    * Stop allowing manipulating your own inventory view while using a QuickBench
 
 2012-07-19  3.0
     * Completely rewritten and optimized crafting algorithm
