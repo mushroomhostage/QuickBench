@@ -511,7 +511,7 @@ class TransparentRecipe {
         // TODO: have a pure Bukkit API fallback in case things go wrong (like in QuickBench 2.x series; uses iterator / Bukkit.getServer().getRecipesFor, etc.)
         List opaqueRecipes = net.minecraft.server.CraftingManager.getInstance().getRecipies();
 
-        for (Object recipeObject: opaqueRecipes) {
+        RECIPE: for (Object recipeObject: opaqueRecipes) {
             net.minecraft.server.CraftingRecipe opaqueRecipe = (net.minecraft.server.CraftingRecipe)recipeObject;
 
             try {
@@ -524,13 +524,22 @@ class TransparentRecipe {
 
                 PrecraftedResult precraftedResult = recipe.canCraft(inputs);
 
-                if (precraftedResult != null) { 
-                    // TODO: should we de-duplicate multiple recipes to same result? I'm thinking not, to support different ingredient inputs (positional)
-                    // (or have an option to)
-                    outputs.add(precraftedResult);
+                if (precraftedResult == null) { 
+                    // can't craft
+                    continue;
                 }
-                // TODO: XXX: get and save updated inventory! precraftedResult.inventory
-                // need to return any items back to the user, for example: vanilla cake, RP2 wool card, diamond drawplate
+
+                // do we already have a recipe crafting to this output?
+                if (!plugin.getConfig().getBoolean("quickBench.showOtherRoutes", false)) {
+                    for (PrecraftedResult existing: outputs) {
+                        if (TransparentRecipe.itemMatches(precraftedResult.computedOutput, existing.computedOutput)) {
+                            plugin.log("skipping other route to "+precraftedResult+" by configuration");
+                            continue RECIPE;
+                        }
+                    }
+                }
+
+                outputs.add(precraftedResult);
             } catch (Exception e) {
                 plugin.log("precraft skipping recipe: "+opaqueRecipe);
                 //TODO e.printStackTrace();
@@ -635,7 +644,7 @@ class QuickBenchListener implements Listener {
 
         if (block != null && event.getAction() == Action.RIGHT_CLICK_BLOCK && isQuickBench(block)) {
             if (!player.hasPermission("quickbench.use")) {
-                String message = plugin.getConfig().getString("quickbench.useDeniedMessage", "You do not have permission to use this QuickBench.");
+                String message = plugin.getConfig().getString("quickBench.useDeniedMessage", "You do not have permission to use this QuickBench.");
                 if (message != null) {
                     player.sendMessage(message);
                 }
@@ -889,7 +898,7 @@ class QuickBenchListener implements Listener {
                 // place quickbench item as lapis block
                 event.getBlockPlaced().setTypeIdAndData(QUICKBENCH_BLOCK_ID, QUICKBENCH_BLOCK_DATA, true);
             } else {
-                String message = plugin.getConfig().getString("quickbench.placeDeniedMessage", "You do not have permission to place this QuickBench.");
+                String message = plugin.getConfig().getString("quickBench.placeDeniedMessage", "You do not have permission to place this QuickBench.");
                 if (message != null) {
                     event.getPlayer().sendMessage(message);
                 }
@@ -914,7 +923,7 @@ class QuickBenchListener implements Listener {
 
                 event.setCancelled(true);
             } else {
-                String message = plugin.getConfig().getString("quickbench.destroyDeniedMessage", "You do not have permission to destroy this QuickBench.");
+                String message = plugin.getConfig().getString("quickBench.destroyDeniedMessage", "You do not have permission to destroy this QuickBench.");
                 if (message != null) {
                     event.getPlayer().sendMessage(message);
                 }

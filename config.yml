@@ -6,7 +6,7 @@ quickBench:
     title: QuickBench
     enableCrafting: true
     minSizeRows: 0
-    bypassBukkit: true
+    showOtherRoutes: false
     useDeniedMessage: 'You do not have permission to use this QuickBench.'
     placeDeniedMessage: 'You do not have permission to place this QuickBench.'
     destroyDeniedMessage: 'You do not have permission to destroy this QuickBench.'

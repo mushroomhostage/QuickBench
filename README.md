@@ -48,6 +48,8 @@ Repeat as desired.
 
 **minSizeRows** (0): Minimum number of rows to show in QuickBench output inventory window. The default of 0 will cause a blank inventory to be shown if there is nothing to craft. Note that if during crafting additional items become available beyond what can be shown in the window, the player must close and reopen the QuickBench to see them - to mitigate this problem, you can set minSizeRows to a higher value to provide extra room. 6 is equivalent to a large chest.
 
+**showOtherRoutes** (false): If true, other recipes which craft to the same output (different 'routes' to the same end) will be shown and can be chosen. Otherwise, only the first recipe will be available and used.
+
 **useDeniedMessage**, **placeDeniedMessage**, **destroyDeniedMessage**: Messages to send to player if attempts to use, place, or destroy a QuickBench without permission (see nodes below). Set to null to not send any message.
 
 ### Permissions
