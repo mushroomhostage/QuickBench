@@ -56,6 +56,8 @@ All permission nodes default to true:
 
 **quickbench.use** (true): Allows you to use a QuickBench
 
+**quickbench.showHidden** (true): Allows you to craft secret recipes from IC2
+
 **quickbench.place** (true): Allows you to place a QuickBench 
 
 **quickbench.destroy** (true): Allows you to destroy a QuickBench
