@@ -331,9 +331,6 @@ class TransparentRecipe {
                 ItemStack takenItem = takeItem(accum, ingredient);
 
                 plugin.log("  ~ taking "+describeItem(ingredient)+" takenItem="+describeItem(takenItem));
-                // TODO: ensure taken item has all important tags - test IC2 lapotron crafting, should take energy crystal with charge right? XXX
-                // TODO: appears not - tag loss? try crafting fully charged energy crystal (30241:1) into lapotron - should get partly charged 30240:23
-                // not discharged :27 -> :26
 
                 if (takenItem != null) {
                     // Take it!
@@ -684,16 +681,6 @@ class QuickBenchListener implements Listener {
         }
     }
 
-    public List<Recipe> getRecipesForX(ItemStack item) {
-        // XXX: either implement, or replace with click-location-based tracking (more reliable? for charging)
-        return null;
-    }
-
-    // XXX: replace by TransparentRecipe
-    Collection<ItemStack> getRecipeInputs(Recipe recipe) {
-        return (recipe instanceof ShapedRecipe) ?  ((ShapedRecipe)recipe).getIngredientMap().values() : ((ShapelessRecipe)recipe).getIngredientList();
-    }
-
     @EventHandler(priority=EventPriority.MONITOR, ignoreCancelled=true)
     public void onInventoryClickWrapper(InventoryClickEvent event) {
         // If something goes wrong, deny the event to try to avoid duping items
@@ -716,6 +703,9 @@ class QuickBenchListener implements Listener {
             return;
         }
 
+        // ALWAYS deny the interaction when clicking a QuickBench inventory to prevent picking up the item
+        event.setResult(Event.Result.DENY);
+
         // Click to craft
 
         HumanEntity player = event.getWhoClicked();
@@ -725,32 +715,22 @@ class QuickBenchListener implements Listener {
         plugin.log("cur item = "+clickedItem);
         plugin.log("shift = "+event.isShiftClick());
         // TODO: shift-click to craft all?
-        plugin.log("raw slot = "+event.getRawSlot());
+        int rawSlot = event.getRawSlot();
+        plugin.log("raw slot = "+rawSlot);
 
-        if (event.getRawSlot() >= view.getTopInventory().getSize()) {
-            // clicked player inventory (bottom)
-
-            if (event.isShiftClick()) {
-                // shift-click would player inventory -> quickbench, deny
-                event.setResult(Event.Result.DENY);
-            }
-
-            // otherwise, let manipulate their own player inventory
-            // Actually, don't let them!
-            event.setResult(Event.Result.DENY);
+        if (rawSlot >= view.getTopInventory().getSize()) {
+            // clicked player inventory (bottom) - can't touch this
             return;
         }
 
         if (clickedItem == null || clickedItem.getType() == Material.AIR) {
             // dropped item (raw slot -999) or empty slot
-            event.setResult(Event.Result.DENY);
             return;
         }
 
         ItemStack itemHolding = event.getCursor();
         if (itemHolding != null && itemHolding.getTypeId() != 0) {
             // they're trying to click the top inventory while holding an item.. nope
-            event.setResult(Event.Result.DENY);
             return;
         }
 
@@ -761,14 +741,12 @@ class QuickBenchListener implements Listener {
         ArrayList<PrecraftedResult> precraftedResults = openPrecraftedResults.get(player.getUniqueId());
         if (precraftedResults == null) {
             plugin.logger.warning("Player "+player+" clicked without an open QuickBench");
-            event.setResult(Event.Result.DENY);
             return;
         }
 
         PrecraftedResult precraftedResult = precraftedResults.get(event.getRawSlot());
         if (precraftedResult == null) {
             plugin.logger.warning("Player "+player+" clicked a slot without any result");
-            event.setResult(Event.Result.DENY);
             return;
         }
 
@@ -778,7 +756,6 @@ class QuickBenchListener implements Listener {
         // if not, then our server-side state is out of sync with the client or there's a bug somewhere
         if (!TransparentRecipe.itemMatches(precraftedResult.computedOutput, clickedItem)) {
             plugin.logger.warning("Player "+player+" clicked "+clickedItem+" but expected "+precraftedResult);
-            event.setResult(Event.Result.DENY);
             return;
         }
 
@@ -812,10 +789,6 @@ class QuickBenchListener implements Listener {
         }
 
         view.getTopInventory().setContents(itemStackArray(newPrecraftedResults));
-
-
-        // don't let pick up
-        event.setResult(Event.Result.DENY);
     }
 
     private void postcraft(HumanEntity player, PrecraftedResult precraftedResult, Inventory destinationInventory) {
