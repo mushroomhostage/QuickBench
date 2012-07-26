@@ -724,19 +724,53 @@ class QuickBenchListener implements Listener {
             return;
         }
 
-        boolean success = clickCraft(rawSlot, view, clickedItem, player);
-        plugin.log("clickCraft success = "+success);
+        ItemStack result = clickCraft(rawSlot, view, clickedItem, player, false);
+        plugin.log("clickCraft success = "+result);
+
+        if (plugin.getConfig().getBoolean("quickBench.shiftCraftStack", true) && event.isShiftClick() && result != null) {
+            // Shift-click = craft full stack
+            int quantityCrafted = result.getAmount();
+            int quantityDesired = Math.max(1, result.getMaxStackSize());
+
+            plugin.log("shift-clicked and initially crafted "+quantityCrafted+", desiring "+quantityDesired);
+
+            while(result != null && quantityCrafted < quantityDesired) {
+                plugin.log("shift-click: crafted "+quantityCrafted+", desired "+quantityDesired);
+
+                // Find the slot to click in the precrafted results
+                ArrayList<PrecraftedResult> precraftedResults = openPrecraftedResults.get(player.getUniqueId());
+                boolean found = false;
+                for (rawSlot = 0; rawSlot < precraftedResults.size(); rawSlot += 1) {
+                    PrecraftedResult r = precraftedResults.get(rawSlot);
+                    if (TransparentRecipe.itemMatches(r.computedOutput, clickedItem)) {
+                        found = true;
+                        break;
+                    }
+                }
+                if (!found) { 
+                    plugin.log("shift-click ended, item "+clickedItem+" not found in precrafted results");
+                    break;
+                }
+                plugin.log("shift-click found at "+rawSlot);
+
+                result = clickCraft(rawSlot, view, clickedItem, player, true);
+                if (result != null) {
+                    quantityCrafted += result.getAmount();
+                }
+            }
+        }
     }
 
-    public boolean clickCraft(int rawSlot, InventoryView view, ItemStack clickedItem, HumanEntity player) {
+    // Click an inventory slot to craft it, returning the crafted item or null
+    public ItemStack clickCraft(int rawSlot, InventoryView view, ItemStack clickedItem, HumanEntity player, boolean quiet) {
         if (rawSlot >= view.getTopInventory().getSize()) {
             // clicked player inventory (bottom) - can't touch this
-            return false;
+            return null;
         }
 
         if (clickedItem == null || clickedItem.getType() == Material.AIR) {
             // dropped item (raw slot -999) or empty slot
-            return false;
+            return null;
         }
 
         Inventory playerInventory = view.getBottomInventory();
@@ -746,13 +780,13 @@ class QuickBenchListener implements Listener {
         ArrayList<PrecraftedResult> precraftedResults = openPrecraftedResults.get(player.getUniqueId());
         if (precraftedResults == null) {
             plugin.logger.warning("Player "+player+" clicked without an open QuickBench");
-            return false;
+            return null;
         }
 
         PrecraftedResult precraftedResult = precraftedResults.get(rawSlot);
         if (precraftedResult == null) {
             plugin.logger.warning("Player "+player+" clicked a slot without any result");
-            return false;
+            return null;
         }
 
         plugin.log("precraftedResult = "+precraftedResult);
@@ -761,7 +795,7 @@ class QuickBenchListener implements Listener {
         // if not, then our server-side state is out of sync with the client or there's a bug somewhere
         if (!TransparentRecipe.itemMatches(precraftedResult.computedOutput, clickedItem)) {
             plugin.logger.warning("Player "+player+" clicked "+clickedItem+" but expected "+precraftedResult);
-            return false;
+            return null;
         }
 
 
@@ -789,13 +823,15 @@ class QuickBenchListener implements Listener {
 
         if (newPrecraftedResults.size() > view.getTopInventory().getSize()) {
             // TODO: improve.. but can't resize window? close and reopen
-            ((Player)player).sendMessage("More crafting outputs available than shown here - reopen to see full list!");
+            if (!quiet) {
+                ((Player)player).sendMessage("More crafting outputs available than shown here - reopen to see full list!");
+            }
             newPrecraftedResults = new ArrayList<PrecraftedResult>(newPrecraftedResults.subList(0, view.getTopInventory().getSize()));
         }
 
         view.getTopInventory().setContents(itemStackArray(newPrecraftedResults));
 
-        return true;
+        return precraftedResult.computedOutput;
     }
 
     private void postcraft(HumanEntity player, PrecraftedResult precraftedResult, Inventory destinationInventory) {
