@@ -718,20 +718,25 @@ class QuickBenchListener implements Listener {
         int rawSlot = event.getRawSlot();
         plugin.log("raw slot = "+rawSlot);
 
-        if (rawSlot >= view.getTopInventory().getSize()) {
-            // clicked player inventory (bottom) - can't touch this
-            return;
-        }
-
-        if (clickedItem == null || clickedItem.getType() == Material.AIR) {
-            // dropped item (raw slot -999) or empty slot
-            return;
-        }
-
         ItemStack itemHolding = event.getCursor();
         if (itemHolding != null && itemHolding.getTypeId() != 0) {
             // they're trying to click the top inventory while holding an item.. nope
             return;
+        }
+
+        boolean success = clickCraft(rawSlot, view, clickedItem, player);
+        plugin.log("clickCraft success = "+success);
+    }
+
+    public boolean clickCraft(int rawSlot, InventoryView view, ItemStack clickedItem, HumanEntity player) {
+        if (rawSlot >= view.getTopInventory().getSize()) {
+            // clicked player inventory (bottom) - can't touch this
+            return false;
+        }
+
+        if (clickedItem == null || clickedItem.getType() == Material.AIR) {
+            // dropped item (raw slot -999) or empty slot
+            return false;
         }
 
         Inventory playerInventory = view.getBottomInventory();
@@ -741,13 +746,13 @@ class QuickBenchListener implements Listener {
         ArrayList<PrecraftedResult> precraftedResults = openPrecraftedResults.get(player.getUniqueId());
         if (precraftedResults == null) {
             plugin.logger.warning("Player "+player+" clicked without an open QuickBench");
-            return;
+            return false;
         }
 
-        PrecraftedResult precraftedResult = precraftedResults.get(event.getRawSlot());
+        PrecraftedResult precraftedResult = precraftedResults.get(rawSlot);
         if (precraftedResult == null) {
             plugin.logger.warning("Player "+player+" clicked a slot without any result");
-            return;
+            return false;
         }
 
         plugin.log("precraftedResult = "+precraftedResult);
@@ -756,7 +761,7 @@ class QuickBenchListener implements Listener {
         // if not, then our server-side state is out of sync with the client or there's a bug somewhere
         if (!TransparentRecipe.itemMatches(precraftedResult.computedOutput, clickedItem)) {
             plugin.logger.warning("Player "+player+" clicked "+clickedItem+" but expected "+precraftedResult);
-            return;
+            return false;
         }
 
 
@@ -789,6 +794,8 @@ class QuickBenchListener implements Listener {
         }
 
         view.getTopInventory().setContents(itemStackArray(newPrecraftedResults));
+
+        return true;
     }
 
     private void postcraft(HumanEntity player, PrecraftedResult precraftedResult, Inventory destinationInventory) {
