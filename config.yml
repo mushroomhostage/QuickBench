@@ -2,6 +2,8 @@ verbose: false
 quickBench:
     blockId: 22
     blockData: 1
+    alternateBlockId: 0
+    alternateBlockData: 0
     itemId: 58
     title: QuickBench
     enableCrafting: true

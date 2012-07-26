@@ -1,3 +1,6 @@
+X   3.0.2
+    * Add optional alternateBlockId/Data config options to help in migrating block IDs
+
 2012-07-21  3.0.1
     * Add quickbench.showHidden permission node to control crafting of IC2 secret recipes
     * Add option to show/hide multiple recipes crafting to the same output (showOtherRoutes, default false)

@@ -40,6 +40,8 @@ Repeat as desired.
 
 **blockData** (1): Data value for block to be identified as a QuickBench, used in conjunction with blockId.
 
+**alternateBlockId** (0) and **alternateBlockData** (0): An alternate block ID/metadata to additionally recognize as a QuickBench. This block won't be placed by the item, but will be usable when right-clicked and drop the item when broken. Useful in case you change the block ID and want to preserve your existing QuickBenches. Set ID to 0 (default) to disable.
+
 **itemId** (58): Item ID for QuickBench when held as an item. Default is Crafting Table.
 
 **title** (QuickBench): Title for QuickBench inventory windows.

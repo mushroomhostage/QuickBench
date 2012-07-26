@@ -587,6 +587,10 @@ class QuickBenchListener implements Listener {
 
     final int QUICKBENCH_BLOCK_ID;
     final byte QUICKBENCH_BLOCK_DATA;
+
+    final int QUICKBENCH_ALT_BLOCK_ID;
+    final byte QUICKBENCH_ALT_BLOCK_DATA;
+
     final int QUICKBENCH_ITEM_ID;
     final static Enchantment QUICKBENCH_ITEM_TAG = Enchantment.FIRE_ASPECT;
     final String QUICKBENCH_TITLE;
@@ -599,6 +603,11 @@ class QuickBenchListener implements Listener {
 
         QUICKBENCH_BLOCK_ID = plugin.getConfig().getInt("quickBench.blockId", Material.LAPIS_BLOCK.getId());
         QUICKBENCH_BLOCK_DATA = (byte)plugin.getConfig().getInt("quickBench.blockData", 1);
+
+        QUICKBENCH_ALT_BLOCK_ID = plugin.getConfig().getInt("quickBench.alternateBlockId", 0);
+        QUICKBENCH_ALT_BLOCK_DATA = (byte)plugin.getConfig().getInt("quickBench.alternateBlockData", 0);
+
+
         QUICKBENCH_ITEM_ID = plugin.getConfig().getInt("quickBench.itemId", Material.WORKBENCH.getId());
         QUICKBENCH_TITLE = plugin.getConfig().getString("quickBench.title", "QuickBench");
 
@@ -611,7 +620,8 @@ class QuickBenchListener implements Listener {
 
    
     public boolean isQuickBench(Block block) {
-        return block.getTypeId() == QUICKBENCH_BLOCK_ID && block.getData() == QUICKBENCH_BLOCK_DATA;
+        return (block.getTypeId() == QUICKBENCH_BLOCK_ID && block.getData() == QUICKBENCH_BLOCK_DATA) ||
+            (QUICKBENCH_ALT_BLOCK_ID != 0 && block.getTypeId() == QUICKBENCH_ALT_BLOCK_ID && block.getData() == QUICKBENCH_ALT_BLOCK_DATA);
     }
 
     public boolean isQuickBench(ItemStack item) {
