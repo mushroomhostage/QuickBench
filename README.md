@@ -10,11 +10,14 @@ Features:
 * Adds a craftable and placeable QuickBench item
 * Open the QuickBench to show items which are craftable from your inventory
 * Click item to craft 
+* Shift-click to craft up to a stack
 * Eliminates need to remember recipes
 * Supports IndustrialCraft^2 recipes
 * Supports Forge ore dictionary recipes
-* Supports computed recipe outputs (e.g., IC2 charged items)
-* Supports post-craft recipe hooks (e.g. RedPower2 drawplate)
+* Supports computed recipe outputs 
+* Supports post-craft recipe hooks
+* Works with IC2 electric items (preserves charge)
+* Works with RedPower2 drawplate/woolcard (properly takes damage)
 * Doesn't lose tagged item data (NBT, added by mods/plugins)
 * Permission support
 
@@ -52,7 +55,10 @@ Repeat as desired.
 
 **showOtherRoutes** (false): If true, other recipes which craft to the same output (different 'routes' to the same end) will be shown and can be chosen. Otherwise, only the first recipe will be available and used.
 
-**craftStack** (true): If true, shift-clicking will craft up to a stack of the item. Player must also have quickbench.craftStack permission.
+**craftStack** (true): If true, shift-clicking will craft up to a stack of the item. Player must also have quickbench.craftStack permission. Note that crafting a full stack is server-intensive, so you may want to limit it.
+
+**maxStackSize** (64): Maximum stack size to craft when shift-clicking. This is normally the natural stack size of the item, but can be limited further with this option.
+
 
 **useDeniedMessage**, **placeDeniedMessage**, **destroyDeniedMessage**: Messages to send to player if attempts to use, place, or destroy a QuickBench without permission (see nodes below). Set to null to not send any message.
 

@@ -10,6 +10,7 @@ quickBench:
     minSizeRows: 0
     showOtherRoutes: false
     craftStack: true
+    maxStackSize: 64
     useDeniedMessage: 'You do not have permission to use this QuickBench.'
     placeDeniedMessage: 'You do not have permission to place this QuickBench.'
     destroyDeniedMessage: 'You do not have permission to destroy this QuickBench.'
