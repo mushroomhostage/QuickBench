@@ -70,6 +70,8 @@ All permission nodes default to true:
 
 **quickbench.showHidden** (true): Allows you to craft secret recipes from IC2
 
+**quickbench.craftStack** (true): Allows you to craft stacks of items at once
+
 **quickbench.place** (true): Allows you to place a QuickBench 
 
 **quickbench.destroy** (true): Allows you to destroy a QuickBench
