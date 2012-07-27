@@ -727,7 +727,7 @@ class QuickBenchListener implements Listener {
         ItemStack result = clickCraft(rawSlot, view, clickedItem, player, false);
         plugin.log("clickCraft success = "+result);
 
-        if (plugin.getConfig().getBoolean("quickBench.shiftCraftStack", true) && event.isShiftClick() && result != null) {
+        if (plugin.getConfig().getBoolean("quickBench.craftStack", true) && event.isShiftClick() && result != null && player.hasPermission("quickbench.craftStack")) {
             // Shift-click = craft full stack
             int quantityCrafted = result.getAmount();
             int quantityDesired = Math.max(1, result.getMaxStackSize());

@@ -6,6 +6,7 @@ permissions:
         children:
             quickbench.use: true
             quickbench.showHidden: true
+            quickbench.craftStack: true
             quickbench.place: true
             quickbench.destroy: true
         default: false
@@ -14,6 +15,9 @@ permissions:
         default: true
     quickbench.showHidden:
         description: Allows you to craft secret recipes from IC2
+        default: true
+    quickbench.craftStack:
+        description: Allows you to craft stacks of items at once
         default: true
     quickbench.place:
         description: Allows you to place a QuickBench 

@@ -1,5 +1,6 @@
 X   3.0.2
-    * Add shift-click to craft a full stack (see shiftCraftStack option to disable)
+    * Add shift-click to craft a full stack (see craftStack option to disable)
+    * Add quickbench.craftStack permission node
     * Add optional alternateBlockId/Data config options to help in migrating block IDs
 
 2012-07-21  3.0.1
