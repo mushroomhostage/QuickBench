@@ -289,6 +289,10 @@ class TransparentRecipe {
                     e.printStackTrace();
                     throw new IllegalArgumentException(e);
                 }
+                // IC2 v1.103 started using zero-width on some recipes.. see https://github.com/mushroomhostage/exphc/issues/102 QuickBench not crafting with UU-matter
+                if (width <= 0) {
+                    width = 3;
+                }
             }
         } else {
             throw new IllegalArgumentException("Unsupported recipe class: " + className + " of " + opaqueRecipe);
@@ -538,8 +542,10 @@ class TransparentRecipe {
 
                 outputs.add(precraftedResult);
             } catch (Exception e) {
-                plugin.log("precraft skipping recipe: "+opaqueRecipe);
-                //TODO e.printStackTrace();
+                plugin.log("precraft skipping recipe: "+opaqueRecipe+" because: "+e);
+                if (plugin.getConfig().getBoolean("verbose", false)) {
+                    e.printStackTrace();
+                }
             }
         }
 

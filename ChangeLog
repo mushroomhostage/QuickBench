@@ -1,3 +1,6 @@
+2012-08-26  3.0.3
+    * Update for IC2 v1.103
+
 2012-07-26   3.0.2
     * Add shift-click to craft a full stack (see craftStack option to disable)
     * Add quickbench.craftStack permission node
