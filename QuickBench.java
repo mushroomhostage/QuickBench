@@ -144,7 +144,9 @@ class TransparentRecipe {
 
             // Get width of shaped recipes
             try {
-                Field field = opaqueRecipe.getClass().getDeclaredField("width");
+                // Get the width field from the ShapedRecipe class, since some mods subclass and do not
+                // have this field -- ComputerCraft 1.41 dan200.turtle.shared.ImposterRecipe
+                Field field = net.minecraft.server.ShapedRecipes.class.getDeclaredField("width");
                 field.setAccessible(true);
                 width = field.getInt(opaqueRecipe);
             } catch (Exception e) {
