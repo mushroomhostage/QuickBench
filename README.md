@@ -2,7 +2,7 @@ QuickBench - crafting without recipes
 
 Tired of remembering crafting recipes? Use a QuickBench! Unlike a normal crafting table which operates on a crafting grid, the QuickBench shows you a list of available items, and you simply click to craft.
 
-**[Download QuickBench 3.0.2](http://dev.bukkit.org/server-mods/quickbench/files/11-quick-bench-3-0-2/)** - released 2012/07/26, add shift-click to craft stack
+**[Download QuickBench 3.0.4](http://dev.bukkit.org/server-mods/quickbench/files/12-quick-bench-3-0-4/)** - released 2012/08/26 for 1.2.5 - compatible with IC2 v1.103, ComputerCraft 1.4.0, and Forge 3.4.9
 
 Features:
 
