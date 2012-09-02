@@ -95,5 +95,6 @@ Some unusual recipes or those added by mods may not behave as expected; please r
 
 * [Crafting Table II](http://www.minecraftforum.net/topic/856538-11-crafting-table-ii-v162-310112/) - a client/server mod which heavily inspired QuickBench
 
-***[Fork me on GitHub](https://github.com/mushroomhostage/QuickBench)***
+* [Crafting Plus](http://dev.bukkit.org/server-mods/craftingplus/) - a new independently-developed plugin for Bukkit 1.3.1+ inspired by QuickBench
 
+***[Fork me on GitHub](https://github.com/mushroomhostage/QuickBench)***
